@@ -2,14 +2,13 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronLeft, ChevronRight, Save } from 'lucide-react'
 import {
-  getRegionByProvince,
+  REGIONS,
   REGION_PROVINCES,
   ROLE_CONFIG,
   STEP_ITEMS,
   SUBPROJECTS,
 } from '../data/config.js'
 import MeetingPreview from '../components/MeetingPreview.jsx'
-import ProvinceMapSelector from '../components/ProvinceMapSelector.jsx'
 import RoleSection from '../components/RoleSection.jsx'
 import {
   createEmptyParticipant,
@@ -64,7 +63,6 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   const [importRole, setImportRole] = useState(ROLE_CONFIG[0].key)
   const [importText, setImportText] = useState('')
   const [importMessage, setImportMessage] = useState('')
-  const [mapMessage, setMapMessage] = useState('')
 
   const completion = useMemo(() => getMeetingCompletion(meeting), [meeting])
   const provinceOptions = meeting.region ? REGION_PROVINCES[meeting.region] || [] : []
@@ -173,22 +171,12 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         }
       }
 
-      setMapMessage(`已切换到${region}，请在下方选择该大区涉及的省份。`)
       return {
         ...currentMeeting,
         region,
         provinces: [],
       }
     })
-  }
-
-  const handleBoxSelectProvinces = (provinces) => {
-    setMeeting((currentMeeting) => ({
-      ...currentMeeting,
-      region: currentMeeting.region || getRegionByProvince(provinces[0]),
-      provinces: Array.from(new Set([...currentMeeting.provinces, ...provinces])),
-    }))
-    setMapMessage(`已通过框选加入 ${provinces.length} 个省份。`)
   }
 
   const handleProvinceToggle = (province) => {
@@ -301,53 +289,23 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
               <section className="map-panel">
                 <div className="choice-panel__header">
                   <div>
-                    <h3>中国地图选大区</h3>
-                    <p>地图按四大区着色，先点击地图中的大区，再在下方选择具体省份。</p>
+                    <h3>所属大区</h3>
+                    <p>先选择大区，再在下方勾选该大区涉及的省份。</p>
                   </div>
                 </div>
-                <ProvinceMapSelector
-                  selectedRegion={meeting.region}
-                  onSelectRegion={handleRegionSelect}
-                  onBoxSelectProvinces={handleBoxSelectProvinces}
-                  onSelectWholeRegion={(region) => {
-                    setMeeting((currentMeeting) => ({
-                      ...currentMeeting,
-                      region,
-                      provinces: [...REGION_PROVINCES[region]],
-                    }))
-                    setMapMessage(`已选中${region}全部省份。`)
-                  }}
-                  onClearSelection={() => {
-                    setMeeting((currentMeeting) => ({
-                      ...currentMeeting,
-                      region: '',
-                      provinces: [],
-                    }))
-                    setMapMessage('')
-                  }}
-                />
-                <div className="map-panel__footer">
-                  <div className="helper-text">
-                    当前大区：{meeting.region || '待选择'}
-                  </div>
-                  {meeting.region ? (
+                <div className="choice-grid">
+                  {REGIONS.map((region) => (
                     <button
                       type="button"
-                      className="button button--secondary"
-                      onClick={() => {
-                        setMeeting((currentMeeting) => ({
-                          ...currentMeeting,
-                          region: '',
-                          provinces: [],
-                        }))
-                        setMapMessage('')
-                      }}
+                      key={region}
+                      className={`choice-card ${meeting.region === region ? 'choice-card--active' : ''}`}
+                      onClick={() => handleRegionSelect(region)}
                     >
-                      重置地图选择
+                      <strong>{region}</strong>
+                      <span>{REGION_PROVINCES[region].length} 个省级区域</span>
                     </button>
-                  ) : null}
+                  ))}
                 </div>
-                {mapMessage ? <div className="inline-message">{mapMessage}</div> : null}
               </section>
 
               {meeting.region ? (
@@ -373,8 +331,24 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                         </button>
                       ))}
                     </div>
-                    <div className="helper-text">
-                      已选省份：{formatMeetingProvinces(meeting)}
+                    <div className="map-panel__footer">
+                      <div className="helper-text">
+                        已选省份：{formatMeetingProvinces(meeting)}
+                      </div>
+                      {meeting.provinces.length > 0 ? (
+                        <button
+                          type="button"
+                          className="button button--secondary"
+                          onClick={() =>
+                            setMeeting((currentMeeting) => ({
+                              ...currentMeeting,
+                              provinces: [],
+                            }))
+                          }
+                        >
+                          清空省份
+                        </button>
+                      ) : null}
                     </div>
                   </section>
 
@@ -469,8 +443,8 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                 </>
               ) : (
                 <div className="empty-state" style={{ padding: '28px 24px' }}>
-                  <strong>请先在地图上选择大区</strong>
-                  <div>地图只用于选择东区、西区、北区、南区；省份会在下方单独展示。</div>
+                  <strong>请先选择大区</strong>
+                  <div>选定东区、西区、北区或南区后，再继续勾选省份和填写基础信息。</div>
                 </div>
               )}
             </div>

@@ -771,37 +771,6 @@
   gap: 14px;
 }
 
-.map-selector {
-  display: grid;
-  gap: 12px;
-}
-
-.map-selector__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.map-selector__canvas {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #ffffff;
-}
-
-.map-selector__canvas--brush {
-  cursor: crosshair;
-}
-
-.map-selector__selection {
-  position: absolute;
-  border: 2px dashed #0f67a5;
-  background: rgba(15, 103, 165, 0.12);
-  pointer-events: none;
-  border-radius: 6px;
-}
-
 .map-panel__footer {
   display: flex;
   align-items: center;
@@ -1245,8 +1214,7 @@
   .smart-import-panel__header,
   .smart-import-panel__footer,
   .role-jump-nav,
-  .map-panel__footer,
-  .map-selector__toolbar {
+  .map-panel__footer {
     flex-direction: column;
     align-items: stretch;
   }
