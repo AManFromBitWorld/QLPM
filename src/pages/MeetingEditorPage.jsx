@@ -192,20 +192,6 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         </div>
       </div>
 
-      <div className="steps">
-        {STEP_ITEMS.map((step, index) => (
-          <button
-            type="button"
-            key={step.key}
-            className={`step-chip ${index === activeStep ? 'step-chip--active' : ''}`}
-            onClick={() => setActiveStep(index)}
-          >
-            <span className="step-chip__index">{index + 1}</span>
-            <span>{step.label}</span>
-          </button>
-        ))}
-      </div>
-
       <div className="editor-anchor-nav">
         {STEP_ITEMS.map((step, index) => (
           <button
@@ -216,6 +202,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
             }`}
             onClick={() => setActiveStep(index)}
           >
+            <span className="editor-anchor-nav__index">{index + 1}</span>
             {step.label}
           </button>
         ))}
