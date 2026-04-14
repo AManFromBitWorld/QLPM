@@ -8,11 +8,12 @@ function RoleSection({
   onAddParticipant,
   onChangeParticipant,
   onRemoveParticipant,
+  sectionId,
 }) {
   const filledCount = getRoleParticipantCount(participants)
 
   return (
-    <section className="role-section">
+    <section className="role-section" id={sectionId}>
       <div className="role-section__header">
         <div>
           <h3>{role.label}</h3>

@@ -11,6 +11,7 @@ import {
 import MeetingPreview from '../components/MeetingPreview.jsx'
 import RoleSection from '../components/RoleSection.jsx'
 import { createEmptyParticipant, createMeetingDraft, normalizeMeeting } from '../utils/meeting.js'
+import { parseExpertText } from '../utils/intake.js'
 
 function getMeetingCompletion(meeting) {
   const totalSlots = ROLE_CONFIG.reduce(
@@ -33,6 +34,15 @@ function getMeetingCompletion(meeting) {
   }
 }
 
+function scrollToSection(sectionId) {
+  const element = document.getElementById(sectionId)
+  if (!element) {
+    return
+  }
+
+  element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 function MeetingEditorPage({ meetings, onSaveMeeting }) {
   const { meetingId } = useParams()
   const navigate = useNavigate()
@@ -45,6 +55,9 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   )
   const [activeStep, setActiveStep] = useState(0)
   const [message, setMessage] = useState('')
+  const [importRole, setImportRole] = useState(ROLE_CONFIG[0].key)
+  const [importText, setImportText] = useState('')
+  const [importMessage, setImportMessage] = useState('')
 
   const completion = useMemo(() => getMeetingCompletion(meeting), [meeting])
   const provinceOptions = REGION_PROVINCES[meeting.region] || []
@@ -112,6 +125,50 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
     }
   }
 
+  const handleSmartImport = () => {
+    const entries = parseExpertText(importText)
+
+    if (entries.length === 0) {
+      setImportMessage('没有识别到可导入的专家信息，请检查格式。')
+      return
+    }
+
+    const participants = [...meeting.attendees[importRole]]
+    let importedCount = 0
+
+    entries.forEach((entry) => {
+      let targetIndex = participants.findIndex(
+        (person) => !person.hospital && !person.name && !person.department && !person.title,
+      )
+
+      if (targetIndex < 0) {
+        participants.push(createEmptyParticipant())
+        targetIndex = participants.length - 1
+      }
+
+      participants[targetIndex] = {
+        ...participants[targetIndex],
+        hospital: entry.hospital || participants[targetIndex].hospital,
+        name: entry.name || participants[targetIndex].name,
+        department: entry.department || participants[targetIndex].department,
+        title: entry.title || participants[targetIndex].title,
+      }
+      importedCount += 1
+    })
+
+    setMeeting((currentMeeting) => ({
+      ...currentMeeting,
+      attendees: {
+        ...currentMeeting.attendees,
+        [importRole]: participants,
+      },
+    }))
+    setImportMessage(
+      `已为“${ROLE_CONFIG.find((role) => role.key === importRole)?.label}”导入 ${importedCount} 条信息。`,
+    )
+    setImportText('')
+  }
+
   const canGoNext = activeStep < STEP_ITEMS.length - 1
   const canGoPrevious = activeStep > 0
 
@@ -145,6 +202,21 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
           >
             <span className="step-chip__index">{index + 1}</span>
             <span>{step.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="editor-anchor-nav">
+        {STEP_ITEMS.map((step, index) => (
+          <button
+            type="button"
+            key={step.key}
+            className={`editor-anchor-nav__link ${
+              index === activeStep ? 'editor-anchor-nav__link--active' : ''
+            }`}
+            onClick={() => setActiveStep(index)}
+          >
+            {step.label}
           </button>
         ))}
       </div>
@@ -302,17 +374,96 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
           ) : null}
 
         {activeStep === 1 ? (
-          <div className="role-grid" style={{ marginTop: 20 }}>
-            {ROLE_CONFIG.map((role) => (
-              <RoleSection
-                key={role.key}
-                role={role}
-                participants={meeting.attendees[role.key]}
-                onAddParticipant={handleAddParticipant}
-                onChangeParticipant={handleParticipantChange}
-                onRemoveParticipant={handleRemoveParticipant}
-              />
-            ))}
+          <div className="editor-section-stack" style={{ marginTop: 20 }}>
+            <section className="role-jump-nav">
+              <div className="role-jump-nav__label">角色快速导航</div>
+              <div className="button-row">
+                {ROLE_CONFIG.map((role) => (
+                  <button
+                    type="button"
+                    key={role.key}
+                    className="button button--ghost"
+                    onClick={() => scrollToSection(`role-${role.key}`)}
+                  >
+                    {role.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="smart-import-panel">
+              <div className="smart-import-panel__header">
+                <div>
+                  <h3>智能填写</h3>
+                  <p>把你拿到的专家信息直接粘贴进来，系统会自动识别并填入当前角色的空位。</p>
+                </div>
+                <div className="field smart-import-panel__role">
+                  <label htmlFor="import-role">导入到角色</label>
+                  <select
+                    id="import-role"
+                    value={importRole}
+                    onChange={(event) => setImportRole(event.target.value)}
+                  >
+                    {ROLE_CONFIG.map((role) => (
+                      <option key={role.key} value={role.key}>
+                        {role.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="smart-import-text">专家信息粘贴框</label>
+                <textarea
+                  id="smart-import-text"
+                  placeholder={`支持示例：\n姓名：张三，医院：复旦大学附属中山医院，科室：感染病科，职称：主任医师\n\n或\n张三，复旦大学附属中山医院，感染病科，主任医师\n李四，上海交通大学医学院附属瑞金医院，呼吸与危重症医学科，副主任医师`}
+                  value={importText}
+                  onChange={(event) => setImportText(event.target.value)}
+                />
+              </div>
+
+              <div className="smart-import-panel__footer">
+                <div className="helper-text">
+                  默认只填充当前角色的空白席位，不会覆盖已经手工填写的内容。
+                </div>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => {
+                      setImportText('')
+                      setImportMessage('')
+                    }}
+                  >
+                    清空
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--primary"
+                    onClick={handleSmartImport}
+                  >
+                    智能填写
+                  </button>
+                </div>
+              </div>
+
+              {importMessage ? <div className="inline-message">{importMessage}</div> : null}
+            </section>
+
+            <div className="role-grid">
+              {ROLE_CONFIG.map((role) => (
+                <RoleSection
+                  key={role.key}
+                  role={role}
+                  sectionId={`role-${role.key}`}
+                  participants={meeting.attendees[role.key]}
+                  onAddParticipant={handleAddParticipant}
+                  onChangeParticipant={handleParticipantChange}
+                  onRemoveParticipant={handleRemoveParticipant}
+                />
+              ))}
+            </div>
           </div>
         ) : null}
 
