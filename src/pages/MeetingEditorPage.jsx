@@ -264,25 +264,6 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
           </div>
         </div>
 
-        <div className="editor-progress">
-          <div className="editor-progress__stat">
-            <strong>{meeting.region || '待选择'}</strong>
-            <span>所属大区</span>
-          </div>
-          <div className="editor-progress__stat">
-            <strong>{meeting.provinces.length}</strong>
-            <span>已选省份</span>
-          </div>
-          <div className="editor-progress__stat">
-            <strong>{completion.filledSlots}</strong>
-            <span>已填写嘉宾席位</span>
-          </div>
-          <div className="editor-progress__stat">
-            <strong>{meeting.status}</strong>
-            <span>当前状态</span>
-          </div>
-        </div>
-
         {message ? <div className="inline-message">{message}</div> : null}
 
         {activeStep === 0 ? (
