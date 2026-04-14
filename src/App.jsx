@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   BrowserRouter,
   NavLink,
@@ -13,9 +13,11 @@ import MeetingsPage from './pages/MeetingsPage.jsx'
 import MeetingDetailPage from './pages/MeetingDetailPage.jsx'
 import {
   duplicateMeetingRecord,
-  getStoredMeetings,
+  getSyncMode,
+  listMeetingRecords,
   removeMeetingRecord,
   saveMeetingRecord,
+  subscribeToMeetingRecords,
 } from './utils/storage.js'
 
 function NewMeetingRoute({ meetings, onSaveMeeting }) {
@@ -38,6 +40,7 @@ function AppShell({
   onDeleteMeeting,
   onDuplicateMeeting,
   onSaveMeeting,
+  syncMode,
 }) {
   const totalMeetings = meetings.length
 
@@ -52,7 +55,10 @@ function AppShell({
           </div>
         </div>
         <div className="topbar__utility">
-          <span className="tag">内部记录 {totalMeetings} 场</span>
+          <div className="button-row" style={{ gap: 8 }}>
+            <span className="tag">内部记录 {totalMeetings} 场</span>
+            <span className="tag">{syncMode === 'cloud' ? '协作云端已启用' : '本地模式'}</span>
+          </div>
         </div>
       </header>
 
@@ -104,20 +110,46 @@ function AppShell({
 }
 
 function App() {
-  const [meetings, setMeetings] = useState(() => getStoredMeetings())
+  const [meetings, setMeetings] = useState([])
+  const [syncMode] = useState(() => getSyncMode())
 
-  const handleSaveMeeting = (meetingDraft) => {
-    const { meetings: nextMeetings, meeting } = saveMeetingRecord(meetings, meetingDraft)
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      const loadedMeetings = await listMeetingRecords()
+      if (active) {
+        setMeetings(loadedMeetings)
+      }
+    }
+
+    load()
+
+    const unsubscribe = subscribeToMeetingRecords((nextMeetings) => {
+      if (active) {
+        setMeetings(nextMeetings)
+      }
+    })
+
+    return () => {
+      active = false
+      unsubscribe?.()
+    }
+  }, [])
+
+  const handleSaveMeeting = async (meetingDraft) => {
+    const { meetings: nextMeetings, meeting } = await saveMeetingRecord(meetings, meetingDraft)
     setMeetings(nextMeetings)
     return meeting
   }
 
-  const handleDeleteMeeting = (meetingId) => {
-    setMeetings((currentMeetings) => removeMeetingRecord(currentMeetings, meetingId))
+  const handleDeleteMeeting = async (meetingId) => {
+    const nextMeetings = await removeMeetingRecord(meetings, meetingId)
+    setMeetings(nextMeetings)
   }
 
-  const handleDuplicateMeeting = (meetingId) => {
-    const { meetings: nextMeetings, meeting } = duplicateMeetingRecord(meetings, meetingId)
+  const handleDuplicateMeeting = async (meetingId) => {
+    const { meetings: nextMeetings, meeting } = await duplicateMeetingRecord(meetings, meetingId)
     setMeetings(nextMeetings)
     return meeting
   }
@@ -129,6 +161,7 @@ function App() {
         onDeleteMeeting={handleDeleteMeeting}
         onDuplicateMeeting={handleDuplicateMeeting}
         onSaveMeeting={handleSaveMeeting}
+        syncMode={syncMode}
       />
     </BrowserRouter>
   )

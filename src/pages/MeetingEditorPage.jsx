@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronLeft, ChevronRight, Save } from 'lucide-react'
 import {
@@ -13,10 +13,13 @@ import RoleSection from '../components/RoleSection.jsx'
 import {
   createEmptyParticipant,
   createMeetingDraft,
+  formatMeetingRegions,
   formatMeetingProvinces,
   getRoleParticipantCount,
+  getRoleStatus,
   normalizeMeeting,
 } from '../utils/meeting.js'
+import { getCollaboratorName, saveCollaboratorName } from '../utils/collaboration.js'
 import { parseExpertText } from '../utils/intake.js'
 
 function getMeetingCompletion(meeting) {
@@ -49,6 +52,16 @@ function scrollToSection(sectionId) {
   element.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+function touchRoleMeta(currentMeeting, roleKey, collaboratorName) {
+  return {
+    ...currentMeeting.roleMeta,
+    [roleKey]: {
+      updatedBy: collaboratorName || '协作成员',
+      updatedAt: new Date().toISOString(),
+    },
+  }
+}
+
 function MeetingEditorPage({ meetings, onSaveMeeting }) {
   const { meetingId } = useParams()
   const navigate = useNavigate()
@@ -64,9 +77,37 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   const [importRole, setImportRole] = useState(ROLE_CONFIG[0].key)
   const [importText, setImportText] = useState('')
   const [importMessage, setImportMessage] = useState('')
+  const [collaboratorName, setCollaboratorName] = useState(() => getCollaboratorName())
+  const [syncMessage, setSyncMessage] = useState('')
+  const isFirstAutosave = useRef(true)
+  const autosaveTimer = useRef(null)
+  const meetingRef = useRef(meeting)
 
   const completion = useMemo(() => getMeetingCompletion(meeting), [meeting])
-  const provinceOptions = meeting.region ? REGION_PROVINCES[meeting.region] || [] : []
+  const provinceOptions = [
+    ...new Set(
+      (meeting.regions || []).flatMap((region) => REGION_PROVINCES[region] || []),
+    ),
+  ]
+
+  useEffect(() => {
+    if (editingMeeting) {
+      const syncTimer = window.setTimeout(() => {
+        setMeeting(normalizeMeeting(editingMeeting))
+      }, 0)
+
+      return () => window.clearTimeout(syncTimer)
+    }
+    return undefined
+  }, [editingMeeting])
+
+  useEffect(() => {
+    meetingRef.current = meeting
+  }, [meeting])
+
+  useEffect(() => {
+    saveCollaboratorName(collaboratorName)
+  }, [collaboratorName])
 
   const handleBaseFieldChange = (field, value) => {
     setMeeting((currentMeeting) => ({
@@ -84,6 +125,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
           person.id === personId ? { ...person, [field]: value } : person,
         ),
       },
+      roleMeta: touchRoleMeta(currentMeeting, roleKey, collaboratorName),
     }))
   }
 
@@ -94,6 +136,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         ...currentMeeting.attendees,
         [roleKey]: [...currentMeeting.attendees[roleKey], createEmptyParticipant()],
       },
+      roleMeta: touchRoleMeta(currentMeeting, roleKey, collaboratorName),
     }))
   }
 
@@ -104,18 +147,23 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         ...currentMeeting.attendees,
         [roleKey]: currentMeeting.attendees[roleKey].filter((person) => person.id !== personId),
       },
+      roleMeta: touchRoleMeta(currentMeeting, roleKey, collaboratorName),
     }))
   }
 
-  const handleSave = (status) => {
-    const savedMeeting = onSaveMeeting({
-      ...meeting,
-      status,
-    })
-    setMeeting(savedMeeting)
-    setMessage(status === '已确认' ? '会议已确认并保存。' : '会议草稿已保存。')
-    if (!meetingId) {
-      navigate(`/meetings/${savedMeeting.id}/edit`, { replace: true })
+  const handleSave = async (status) => {
+    try {
+      const savedMeeting = await onSaveMeeting({
+        ...meeting,
+        status,
+      })
+      setMeeting(savedMeeting)
+      setMessage(status === '已确认' ? '会议已确认并保存。' : '会议草稿已保存。')
+      if (!meetingId) {
+        navigate(`/meetings/${savedMeeting.id}/edit`, { replace: true })
+      }
+    } catch {
+      setMessage('保存失败，请检查协作配置或网络连接。')
     }
   }
 
@@ -156,6 +204,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         ...currentMeeting.attendees,
         [importRole]: participants,
       },
+      roleMeta: touchRoleMeta(currentMeeting, importRole, collaboratorName),
     }))
     setImportMessage(
       `已为“${ROLE_CONFIG.find((role) => role.key === importRole)?.label}”导入 ${importedCount} 条信息。`,
@@ -165,17 +214,21 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
   const handleRegionSelect = (region) => {
     setMeeting((currentMeeting) => {
-      if (currentMeeting.region === region) {
-        return {
-          ...currentMeeting,
-          region,
-        }
-      }
+      const exists = currentMeeting.regions.includes(region)
+      const nextRegions = exists
+        ? currentMeeting.regions.filter((item) => item !== region)
+        : [...currentMeeting.regions, region]
+      const allowedProvinces = new Set(
+        nextRegions.flatMap((item) => REGION_PROVINCES[item] || []),
+      )
+      const nextProvinces = currentMeeting.provinces.filter((province) =>
+        allowedProvinces.has(province),
+      )
 
       return {
         ...currentMeeting,
-        region,
-        provinces: [],
+        regions: nextRegions,
+        provinces: nextProvinces,
       }
     })
   }
@@ -201,6 +254,48 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
   const canGoNext = activeStep < STEP_ITEMS.length - 1
   const canGoPrevious = activeStep > 0
+  const autosavePayload = useMemo(
+    () =>
+      JSON.stringify({
+        regions: meeting.regions,
+        provinces: meeting.provinces,
+        project: meeting.project,
+        title: meeting.title,
+        date: meeting.date,
+        time: meeting.time,
+        note: meeting.note,
+        status: meeting.status,
+        attendees: meeting.attendees,
+        roleMeta: meeting.roleMeta,
+      }),
+    [meeting],
+  )
+
+  useEffect(() => {
+    if (isFirstAutosave.current) {
+      isFirstAutosave.current = false
+      return
+    }
+
+    window.clearTimeout(autosaveTimer.current)
+    autosaveTimer.current = window.setTimeout(async () => {
+      try {
+        setSyncMessage('自动保存中...')
+        const savedMeeting = await onSaveMeeting(meetingRef.current)
+        setMeeting(savedMeeting)
+        setSyncMessage('已自动保存并同步')
+        if (!meetingId) {
+          navigate(`/meetings/${savedMeeting.id}/edit`, { replace: true })
+        }
+      } catch {
+        setSyncMessage('自动保存失败，请检查协作配置')
+      }
+    }, 900)
+
+    return () => {
+      window.clearTimeout(autosaveTimer.current)
+    }
+  }, [autosavePayload, meetingId, navigate, onSaveMeeting])
 
   return (
     <div className="page-content">
@@ -248,7 +343,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
             <button
               type="button"
               className="button button--secondary"
-              onClick={() => handleSave('草稿')}
+              onClick={() => void handleSave('草稿')}
             >
               <Save size={16} />
               保存草稿
@@ -256,7 +351,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
             <button
               type="button"
               className="button button--primary"
-              onClick={() => handleSave('已确认')}
+              onClick={() => void handleSave('已确认')}
             >
               <CheckCircle2 size={16} />
               保存并确认
@@ -265,6 +360,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         </div>
 
         {message ? <div className="inline-message">{message}</div> : null}
+        {syncMessage ? <div className="inline-message">{syncMessage}</div> : null}
 
         {activeStep === 0 ? (
           <div className="editor-section-stack editor-section-stack--dense" style={{ marginTop: 20 }}>
@@ -276,9 +372,9 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                     <p>先锁定大区与省份，再进入右侧基础表单。</p>
                   </div>
                   <div className="selection-panel__stats">
-                    <div className="selection-stat">
-                      <span>所属大区</span>
-                      <strong>{meeting.region || '未选择'}</strong>
+                  <div className="selection-stat">
+                      <span>已选大区</span>
+                      <strong>{meeting.regions.length > 0 ? meeting.regions.length : '未选择'}</strong>
                     </div>
                     <div className="selection-stat">
                       <span>已选省份</span>
@@ -300,7 +396,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                       <button
                         type="button"
                         key={region}
-                        className={`choice-card ${meeting.region === region ? 'choice-card--active' : ''}`}
+                        className={`choice-card ${meeting.regions.includes(region) ? 'choice-card--active' : ''}`}
                         onClick={() => handleRegionSelect(region)}
                       >
                         <strong>{region}</strong>
@@ -310,14 +406,14 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                   </div>
                 </div>
 
-                {meeting.region ? (
+                {meeting.regions.length > 0 ? (
                   <div className="selection-block selection-block--secondary">
                     <div className="selection-block__header selection-block__header--inline">
                       <div>
                         <span className="selection-block__step">步骤 2</span>
                         <h4>勾选涉及省份</h4>
                       </div>
-                      <p>当前大区：{meeting.region}，支持多选。</p>
+                      <p>当前大区：{formatMeetingRegions(meeting)}，支持多选。</p>
                     </div>
                     <div className="chip-grid chip-grid--compact">
                       {provinceOptions.map((province) => (
@@ -466,6 +562,22 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                   <p>先定位角色，再连续填写医院、姓名、科室、职称。</p>
                 </div>
 
+                <section className="collaboration-panel">
+                  <div className="field">
+                    <label htmlFor="collaborator-name">填写人</label>
+                    <input
+                      id="collaborator-name"
+                      type="text"
+                      placeholder="请输入你的姓名"
+                      value={collaboratorName}
+                      onChange={(event) => setCollaboratorName(event.target.value)}
+                    />
+                  </div>
+                  <div className="helper-text">
+                    自动保存会把你记录为当前角色的最近更新人。
+                  </div>
+                </section>
+
                 <div className="people-sidebar__summary">
                   <div className="people-sidebar__metric">
                     <span>已填席位</span>
@@ -489,17 +601,27 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                       <button
                         type="button"
                         key={role.key}
-                        className="role-jump-nav__button"
-                        onClick={() => scrollToSection(`role-${role.key}`)}
-                      >
+                      className="role-jump-nav__button"
+                      onClick={() => scrollToSection(`role-${role.key}`)}
+                    >
+                      <div>
                         <strong>{role.label}</strong>
-                        <span>
+                        <div className="role-jump-nav__meta">
+                          {meeting.roleMeta?.[role.key]?.updatedBy
+                            ? `最近更新：${meeting.roleMeta[role.key].updatedBy}`
+                            : '尚未填写'}
+                        </div>
+                      </div>
+                      <div className="role-jump-nav__status">
+                        <span>{getRoleStatus(meeting.attendees[role.key])}</span>
+                        <em>
                           {getRoleParticipantCount(meeting.attendees[role.key])}/
                           {meeting.attendees[role.key].length}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                        </em>
+                      </div>
+                    </button>
+                  ))}
+                </div>
                 </section>
 
                 <section className="smart-import-panel smart-import-panel--compact smart-import-panel--flat">
@@ -579,6 +701,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                       role={role}
                       sectionId={`role-${role.key}`}
                       participants={meeting.attendees[role.key]}
+                      collaborationMeta={meeting.roleMeta?.[role.key]}
                       onAddParticipant={handleAddParticipant}
                       onChangeParticipant={handleParticipantChange}
                       onRemoveParticipant={handleRemoveParticipant}

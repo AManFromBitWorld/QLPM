@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Copy, FileDown, Pencil, Printer, Trash2 } from 'lucide-react'
 import MeetingPreview from '../components/MeetingPreview.jsx'
 import { buildRoleSummary, exportMeetingToExcel, exportMeetingToPdf, printMeetingDocument } from '../utils/export.js'
-import { formatMeetingProvinces } from '../utils/meeting.js'
+import { formatMeetingProvinces, formatMeetingRegions } from '../utils/meeting.js'
 
 function MeetingDetailPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
   const { meetingId } = useParams()
@@ -32,20 +32,20 @@ function MeetingDetailPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
 
   const roleSummary = buildRoleSummary(meeting)
 
-  const handleDuplicate = () => {
-    const copiedMeeting = onDuplicateMeeting(meeting.id)
+  const handleDuplicate = async () => {
+    const copiedMeeting = await onDuplicateMeeting(meeting.id)
     if (copiedMeeting) {
       navigate(`/meetings/${copiedMeeting.id}/edit`)
     }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const shouldDelete = window.confirm('确定删除这场会议记录吗？')
     if (!shouldDelete) {
       return
     }
 
-    onDeleteMeeting(meeting.id)
+    await onDeleteMeeting(meeting.id)
     navigate('/meetings')
   }
 
@@ -71,11 +71,11 @@ function MeetingDetailPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
             <Pencil size={16} />
             编辑会议
           </Link>
-          <button className="button button--ghost" type="button" onClick={handleDuplicate}>
+          <button className="button button--ghost" type="button" onClick={() => void handleDuplicate()}>
             <Copy size={16} />
             复制会议
           </button>
-          <button className="button button--danger" type="button" onClick={handleDelete}>
+          <button className="button button--danger" type="button" onClick={() => void handleDelete()}>
             <Trash2 size={16} />
             删除
           </button>
@@ -85,7 +85,7 @@ function MeetingDetailPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
       <section className="section-card detail-panel">
         <div className="summary-grid">
           <article className="summary-card">
-            <strong>{meeting.region}</strong>
+            <strong>{formatMeetingRegions(meeting)}</strong>
             <span>所属大区</span>
           </article>
           <article className="summary-card">

@@ -1,5 +1,10 @@
 import { ROLE_CONFIG } from '../data/config.js'
-import { flattenParticipants, formatMeetingDateTime, formatMeetingProvinces } from './meeting.js'
+import {
+  flattenParticipants,
+  formatMeetingDateTime,
+  formatMeetingProvinces,
+  formatMeetingRegions,
+} from './meeting.js'
 
 function buildFileName(meeting, suffix) {
   const raw = `${meeting.project}-${meeting.title || '未命名会议'}-${suffix}`
@@ -11,7 +16,7 @@ export async function exportMeetingToExcel(meeting) {
   const workbook = XLSX.utils.book_new()
   const summaryRows = [
     ['项目名称', '精准抗感染专项系列会议'],
-    ['所属大区', meeting.region],
+    ['所属大区', formatMeetingRegions(meeting)],
     ['涉及省份', formatMeetingProvinces(meeting)],
     ['所属子项目', meeting.project],
     ['会议主题', meeting.title || '未填写'],
@@ -206,7 +211,7 @@ export function buildSearchIndex(meeting) {
   return [
     meeting.title,
     meeting.project,
-    meeting.region,
+    formatMeetingRegions(meeting),
     formatMeetingProvinces(meeting),
     meeting.note,
     formatMeetingDateTime(meeting),

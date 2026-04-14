@@ -22,6 +22,16 @@ export function createRoleEntries(minimum) {
   return Array.from({ length: minimum }, () => createEmptyParticipant())
 }
 
+export function createRoleMeta() {
+  return ROLE_CONFIG.reduce((collection, role) => {
+    collection[role.key] = {
+      updatedBy: '',
+      updatedAt: '',
+    }
+    return collection
+  }, {})
+}
+
 export function createMeetingDraft() {
   const attendees = ROLE_CONFIG.reduce((collection, role) => {
     collection[role.key] = createRoleEntries(role.minimum)
@@ -30,7 +40,7 @@ export function createMeetingDraft() {
 
   return {
     id: generateId(),
-    region: '',
+    regions: [],
     provinces: [],
     project: '焦点对话',
     title: '',
@@ -39,6 +49,7 @@ export function createMeetingDraft() {
     note: '',
     status: '草稿',
     attendees,
+    roleMeta: createRoleMeta(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -51,14 +62,19 @@ export function cloneMeeting(meeting) {
 export function normalizeMeeting(meeting) {
   const fallback = createMeetingDraft()
   const source = meeting ? cloneMeeting(meeting) : fallback
+  const sourceRegions = Array.isArray(source.regions)
+    ? source.regions
+    : source.region
+      ? [source.region]
+      : []
   const sourceProvinces = Array.isArray(source.provinces)
     ? source.provinces
     : source.province
       ? [source.province]
       : []
-  const provinces = sourceProvinces.filter(Boolean)
-  const derivedRegion = provinces.length > 0 ? getRegionByProvince(provinces[0]) : ''
-  const region = source.region || derivedRegion || fallback.region
+  const provinces = [...new Set(sourceProvinces.filter(Boolean))]
+  const derivedRegions = [...new Set(provinces.map((province) => getRegionByProvince(province)).filter(Boolean))]
+  const regions = [...new Set([...sourceRegions.filter(Boolean), ...derivedRegions])]
 
   const attendees = ROLE_CONFIG.reduce((collection, role) => {
     const incoming = Array.isArray(source.attendees?.[role.key])
@@ -79,9 +95,17 @@ export function normalizeMeeting(meeting) {
     return collection
   }, {})
 
+  const roleMeta = ROLE_CONFIG.reduce((collection, role) => {
+    collection[role.key] = {
+      updatedBy: source.roleMeta?.[role.key]?.updatedBy || '',
+      updatedAt: source.roleMeta?.[role.key]?.updatedAt || '',
+    }
+    return collection
+  }, {})
+
   return {
     id: source.id || generateId(),
-    region,
+    regions,
     provinces,
     project: source.project || fallback.project,
     title: source.title || '',
@@ -90,6 +114,7 @@ export function normalizeMeeting(meeting) {
     note: source.note || '',
     status: source.status || '草稿',
     attendees,
+    roleMeta,
     createdAt: source.createdAt || new Date().toISOString(),
     updatedAt: source.updatedAt || new Date().toISOString(),
   }
@@ -145,7 +170,26 @@ export function formatMeetingDateTime(meeting) {
   return `${datePart} ${timePart}`
 }
 
+export function formatMeetingRegions(meeting) {
+  const regions = meeting.regions || []
+  return regions.length > 0 ? regions.join('、') : '待选择大区'
+}
+
 export function formatMeetingProvinces(meeting) {
   const provinces = meeting.provinces || []
   return provinces.length > 0 ? provinces.join('、') : '待选择省份'
+}
+
+export function getRoleStatus(participants) {
+  const filledCount = getRoleParticipantCount(participants)
+
+  if (filledCount === 0) {
+    return '待填写'
+  }
+
+  if (filledCount < participants.length) {
+    return '填写中'
+  }
+
+  return '已完成'
 }

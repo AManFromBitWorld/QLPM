@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Copy, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { ALL_PROVINCES, REGIONS, SUBPROJECTS } from '../data/config.js'
 import { buildRoleSummary, buildSearchIndex } from '../utils/export.js'
-import { formatMeetingProvinces } from '../utils/meeting.js'
+import { formatMeetingProvinces, formatMeetingRegions } from '../utils/meeting.js'
 
 function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
   const navigate = useNavigate()
@@ -21,7 +21,8 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
     return meetings.filter((meeting) => {
       const projectMatches =
         projectFilter === '全部子项目' || meeting.project === projectFilter
-      const regionMatches = regionFilter === '全部大区' || meeting.region === regionFilter
+      const regionMatches =
+        regionFilter === '全部大区' || (meeting.regions || []).includes(regionFilter)
       const provinceMatches =
         provinceFilter === '全部省份' || (meeting.provinces || []).includes(provinceFilter)
       const dateMatches = !dateFilter || meeting.date === dateFilter
@@ -40,23 +41,23 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
 
   const regionSummary = REGIONS.map((region) => ({
     region,
-    count: meetings.filter((meeting) => meeting.region === region).length,
+    count: meetings.filter((meeting) => (meeting.regions || []).includes(region)).length,
   }))
 
-  const handleDuplicate = (meetingId) => {
-    const copiedMeeting = onDuplicateMeeting(meetingId)
+  const handleDuplicate = async (meetingId) => {
+    const copiedMeeting = await onDuplicateMeeting(meetingId)
     if (copiedMeeting) {
       navigate(`/meetings/${copiedMeeting.id}/edit`)
     }
   }
 
-  const handleDelete = (meetingId) => {
+  const handleDelete = async (meetingId) => {
     const shouldDelete = window.confirm('确定删除这场会议记录吗？该操作无法撤销。')
     if (!shouldDelete) {
       return
     }
 
-    onDeleteMeeting(meetingId)
+    await onDeleteMeeting(meetingId)
   }
 
   return (
@@ -177,7 +178,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
                   <div className="meeting-card__top">
                     <div>
                       <div className="button-row" style={{ gap: 8 }}>
-                        <span className="tag">{meeting.region}</span>
+                        <span className="tag">{formatMeetingRegions(meeting)}</span>
                         <span className="tag">{formatMeetingProvinces(meeting)}</span>
                         <span className="tag">{meeting.project}</span>
                       </div>
@@ -200,7 +201,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
                   <div className="meeting-meta">
                     <div>
                       <span>所属大区</span>
-                      <strong>{meeting.region}</strong>
+                      <strong>{formatMeetingRegions(meeting)}</strong>
                     </div>
                     <div>
                       <span>会议日期</span>
@@ -240,7 +241,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
                     <button
                       type="button"
                       className="button button--ghost"
-                      onClick={() => handleDuplicate(meeting.id)}
+                      onClick={() => void handleDuplicate(meeting.id)}
                     >
                       <Copy size={16} />
                       复制
@@ -248,7 +249,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
                     <button
                       type="button"
                       className="button button--danger"
-                      onClick={() => handleDelete(meeting.id)}
+                      onClick={() => void handleDelete(meeting.id)}
                     >
                       <Trash2 size={16} />
                       删除

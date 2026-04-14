@@ -1,16 +1,18 @@
 import { Plus, X } from 'lucide-react'
 import { PERSON_FIELDS } from '../data/config.js'
-import { getRoleParticipantCount } from '../utils/meeting.js'
+import { getRoleParticipantCount, getRoleStatus } from '../utils/meeting.js'
 
 function RoleSection({
   role,
   participants,
+  collaborationMeta,
   onAddParticipant,
   onChangeParticipant,
   onRemoveParticipant,
   sectionId,
 }) {
   const filledCount = getRoleParticipantCount(participants)
+  const roleStatus = getRoleStatus(participants)
 
   return (
     <section className="role-section" id={sectionId}>
@@ -20,7 +22,15 @@ function RoleSection({
           <p>
             默认 {role.minimum} 人，当前 {participants.length} 个席位，已填写 {filledCount} 位。
           </p>
-          <span className="helper-text">{role.description}</span>
+          <div className="role-section__meta-row">
+            <span className="helper-text">{role.description}</span>
+            <span className="role-section__status">{roleStatus}</span>
+            {collaborationMeta?.updatedBy ? (
+              <span className="helper-text">
+                最近更新：{collaborationMeta.updatedBy}
+              </span>
+            ) : null}
+          </div>
         </div>
         <button
           type="button"
