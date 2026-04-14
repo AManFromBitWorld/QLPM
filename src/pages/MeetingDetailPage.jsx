@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Copy, FileDown, Pencil, Printer, Trash2 } from 'lucide-react'
 import MeetingPreview from '../components/MeetingPreview.jsx'
 import { buildRoleSummary, exportMeetingToExcel, exportMeetingToPdf, printMeetingDocument } from '../utils/export.js'
+import { formatMeetingProvinces } from '../utils/meeting.js'
 
 function MeetingDetailPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
   const { meetingId } = useParams()
@@ -88,8 +89,8 @@ function MeetingDetailPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
             <span>所属大区</span>
           </article>
           <article className="summary-card">
-            <strong>{meeting.province}</strong>
-            <span>所属省份</span>
+            <strong>{formatMeetingProvinces(meeting)}</strong>
+            <span>涉及省份</span>
           </article>
           <article className="summary-card">
             <strong>{meeting.project}</strong>

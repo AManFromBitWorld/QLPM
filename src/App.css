@@ -762,6 +762,22 @@
   color: #647a8f;
 }
 
+.map-panel {
+  padding: 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(73, 105, 137, 0.12);
+  background: #fbfdff;
+  display: grid;
+  gap: 14px;
+}
+
+.map-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .choice-panel {
   padding: 18px;
   border-radius: 8px;
@@ -1167,7 +1183,8 @@
   .home-cta,
   .smart-import-panel__header,
   .smart-import-panel__footer,
-  .role-jump-nav {
+  .role-jump-nav,
+  .map-panel__footer {
     flex-direction: column;
     align-items: stretch;
   }

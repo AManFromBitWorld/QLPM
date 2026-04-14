@@ -19,15 +19,62 @@ export const SUBPROJECTS = [
     cover:
       'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?auto=format&fit=crop&w=1200&q=80',
   },
+  {
+    value: '科学管理 遏制耐药',
+    description: '聚焦抗菌药物规范管理、感染防控和耐药遏制策略，适合管理导向型会议。',
+    cover:
+      'https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1200&q=80',
+  },
 ]
 
 export const REGIONS = ['东区', '西区', '北区', '南区']
 
 export const REGION_PROVINCES = {
-  东区: ['上海', '江苏', '浙江', '安徽', '福建', '江西', '山东'],
+  东区: ['上海', '江苏', '浙江', '安徽', '福建', '江西', '山东', '台湾'],
   西区: ['重庆', '四川', '贵州', '云南', '西藏', '陕西', '甘肃', '青海', '宁夏', '新疆'],
   北区: ['北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江', '河南'],
   南区: ['广东', '广西', '海南', '湖南', '湖北', '香港', '澳门'],
+}
+
+export const ALL_PROVINCES = Object.values(REGION_PROVINCES).flat()
+
+export function normalizeProvinceName(name) {
+  if (!name) {
+    return ''
+  }
+
+  const specialMap = {
+    北京市: '北京',
+    天津市: '天津',
+    上海市: '上海',
+    重庆市: '重庆',
+    内蒙古自治区: '内蒙古',
+    广西壮族自治区: '广西',
+    西藏自治区: '西藏',
+    宁夏回族自治区: '宁夏',
+    新疆维吾尔自治区: '新疆',
+    香港特别行政区: '香港',
+    澳门特别行政区: '澳门',
+    台湾省: '台湾',
+  }
+
+  if (specialMap[name]) {
+    return specialMap[name]
+  }
+
+  return name
+    .replace(/省$/g, '')
+    .replace(/市$/g, '')
+    .replace(/自治区$/g, '')
+    .replace(/特别行政区$/g, '')
+    .trim()
+}
+
+export function getRegionByProvince(province) {
+  return (
+    Object.entries(REGION_PROVINCES).find(([, provinces]) => provinces.includes(province))?.[0] ||
+    ''
+  )
 }
 
 export const ROLE_CONFIG = [

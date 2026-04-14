@@ -1,4 +1,5 @@
 import { ROLE_CONFIG } from '../data/config.js'
+import { formatMeetingProvinces } from '../utils/meeting.js'
 
 function renderValue(value, fallback = '待补充') {
   return value ? value : <span className="placeholder-text">{fallback}</span>
@@ -10,7 +11,6 @@ function MeetingPreview({ meeting, previewRef }) {
       <div className="preview-document__hero">
         <div className="button-row" style={{ gap: 8 }}>
           <span className="tag">{meeting.region}</span>
-          <span className="tag">{meeting.province}</span>
           <span className="tag">{meeting.project}</span>
         </div>
         <h3>{meeting.title || '未命名会议'}</h3>
@@ -24,8 +24,8 @@ function MeetingPreview({ meeting, previewRef }) {
             <strong>{renderValue(meeting.region)}</strong>
           </article>
           <article className="detail-card">
-            <span>所属省份</span>
-            <strong>{renderValue(meeting.province)}</strong>
+            <span>涉及省份</span>
+            <strong>{renderValue(formatMeetingProvinces(meeting))}</strong>
           </article>
           <article className="detail-card">
             <span>所属子项目</span>

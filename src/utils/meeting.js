@@ -1,4 +1,4 @@
-import { REGION_PROVINCES, ROLE_CONFIG } from '../data/config.js'
+import { getRegionByProvince, REGION_PROVINCES, ROLE_CONFIG } from '../data/config.js'
 
 function generateId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -28,12 +28,10 @@ export function createMeetingDraft() {
     return collection
   }, {})
 
-  const defaultRegion = '东区'
-
   return {
     id: generateId(),
-    region: defaultRegion,
-    province: REGION_PROVINCES[defaultRegion][0],
+    region: '',
+    provinces: [],
     project: '焦点对话',
     title: '',
     date: '',
@@ -53,11 +51,14 @@ export function cloneMeeting(meeting) {
 export function normalizeMeeting(meeting) {
   const fallback = createMeetingDraft()
   const source = meeting ? cloneMeeting(meeting) : fallback
-  const region = source.region || fallback.region
-  const provinceOptions = REGION_PROVINCES[region] || REGION_PROVINCES[fallback.region]
-  const province = provinceOptions.includes(source.province)
-    ? source.province
-    : provinceOptions[0]
+  const sourceProvinces = Array.isArray(source.provinces)
+    ? source.provinces
+    : source.province
+      ? [source.province]
+      : []
+  const provinces = sourceProvinces.filter(Boolean)
+  const derivedRegion = provinces.length > 0 ? getRegionByProvince(provinces[0]) : ''
+  const region = source.region || derivedRegion || fallback.region
 
   const attendees = ROLE_CONFIG.reduce((collection, role) => {
     const incoming = Array.isArray(source.attendees?.[role.key])
@@ -81,7 +82,7 @@ export function normalizeMeeting(meeting) {
   return {
     id: source.id || generateId(),
     region,
-    province,
+    provinces,
     project: source.project || fallback.project,
     title: source.title || '',
     date: source.date || '',
@@ -142,4 +143,9 @@ export function formatMeetingDateTime(meeting) {
   const datePart = meeting.date || '待定日期'
   const timePart = meeting.time || '待定时间'
   return `${datePart} ${timePart}`
+}
+
+export function formatMeetingProvinces(meeting) {
+  const provinces = meeting.provinces || []
+  return provinces.length > 0 ? provinces.join('、') : '待选择省份'
 }

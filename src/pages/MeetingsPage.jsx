@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Copy, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react'
-import { REGIONS, REGION_PROVINCES, SUBPROJECTS } from '../data/config.js'
+import { ALL_PROVINCES, REGIONS, SUBPROJECTS } from '../data/config.js'
 import { buildRoleSummary, buildSearchIndex } from '../utils/export.js'
+import { formatMeetingProvinces } from '../utils/meeting.js'
 
 function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
   const navigate = useNavigate()
@@ -12,12 +13,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
   const [provinceFilter, setProvinceFilter] = useState('全部省份')
   const [dateFilter, setDateFilter] = useState('')
 
-  const provinceOptions =
-    regionFilter === '全部大区'
-      ? Array.from(
-          new Set(Object.values(REGION_PROVINCES).flat()),
-        )
-      : REGION_PROVINCES[regionFilter] || []
+  const provinceOptions = ALL_PROVINCES
 
   const filteredMeetings = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
@@ -27,7 +23,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
         projectFilter === '全部子项目' || meeting.project === projectFilter
       const regionMatches = regionFilter === '全部大区' || meeting.region === regionFilter
       const provinceMatches =
-        provinceFilter === '全部省份' || meeting.province === provinceFilter
+        provinceFilter === '全部省份' || (meeting.provinces || []).includes(provinceFilter)
       const dateMatches = !dateFilter || meeting.date === dateFilter
       const searchMatches =
         !normalizedSearch || buildSearchIndex(meeting).includes(normalizedSearch)
@@ -182,7 +178,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
                     <div>
                       <div className="button-row" style={{ gap: 8 }}>
                         <span className="tag">{meeting.region}</span>
-                        <span className="tag">{meeting.province}</span>
+                        <span className="tag">{formatMeetingProvinces(meeting)}</span>
                         <span className="tag">{meeting.project}</span>
                       </div>
                       <h3>{meeting.title || '未命名会议'}</h3>
@@ -211,8 +207,8 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
                       <strong>{meeting.date || '待定'}</strong>
                     </div>
                     <div>
-                      <span>所属省份</span>
-                      <strong>{meeting.province}</strong>
+                      <span>涉及省份</span>
+                      <strong>{formatMeetingProvinces(meeting)}</strong>
                     </div>
                     <div>
                       <span>嘉宾席位</span>

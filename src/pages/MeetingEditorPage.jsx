@@ -2,15 +2,20 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CheckCircle2, ChevronLeft, ChevronRight, Save } from 'lucide-react'
 import {
-  REGIONS,
-  REGION_PROVINCES,
+  getRegionByProvince,
   ROLE_CONFIG,
   STEP_ITEMS,
   SUBPROJECTS,
 } from '../data/config.js'
 import MeetingPreview from '../components/MeetingPreview.jsx'
+import ProvinceMapSelector from '../components/ProvinceMapSelector.jsx'
 import RoleSection from '../components/RoleSection.jsx'
-import { createEmptyParticipant, createMeetingDraft, normalizeMeeting } from '../utils/meeting.js'
+import {
+  createEmptyParticipant,
+  createMeetingDraft,
+  formatMeetingProvinces,
+  normalizeMeeting,
+} from '../utils/meeting.js'
 import { parseExpertText } from '../utils/intake.js'
 
 function getMeetingCompletion(meeting) {
@@ -58,27 +63,15 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   const [importRole, setImportRole] = useState(ROLE_CONFIG[0].key)
   const [importText, setImportText] = useState('')
   const [importMessage, setImportMessage] = useState('')
+  const [mapMessage, setMapMessage] = useState('')
 
   const completion = useMemo(() => getMeetingCompletion(meeting), [meeting])
-  const provinceOptions = REGION_PROVINCES[meeting.region] || []
 
   const handleBaseFieldChange = (field, value) => {
-    setMeeting((currentMeeting) => {
-      if (field === 'region') {
-        const nextProvinceOptions = REGION_PROVINCES[value] || []
-
-        return {
-          ...currentMeeting,
-          region: value,
-          province: nextProvinceOptions[0] || '',
-        }
-      }
-
-      return {
-        ...currentMeeting,
-        [field]: value,
-      }
-    })
+    setMeeting((currentMeeting) => ({
+      ...currentMeeting,
+      [field]: value,
+    }))
   }
 
   const handleParticipantChange = (roleKey, personId, field, value) => {
@@ -169,6 +162,45 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
     setImportText('')
   }
 
+  const handleProvinceToggle = (province) => {
+    setMeeting((currentMeeting) => {
+      const exists = currentMeeting.provinces.includes(province)
+
+      if (exists) {
+        const nextProvinces = currentMeeting.provinces.filter((item) => item !== province)
+        const nextRegion = nextProvinces.length > 0 ? getRegionByProvince(nextProvinces[0]) : ''
+        setMapMessage('')
+
+        return {
+          ...currentMeeting,
+          region: nextRegion,
+          provinces: nextProvinces,
+        }
+      }
+
+      const provinceRegion = getRegionByProvince(province)
+      if (
+        currentMeeting.provinces.length > 0 &&
+        currentMeeting.region &&
+        currentMeeting.region !== provinceRegion
+      ) {
+        setMapMessage(`已切换到${provinceRegion}，系统只保留同一大区内的省份。`)
+        return {
+          ...currentMeeting,
+          region: provinceRegion,
+          provinces: [province],
+        }
+      }
+
+      setMapMessage('')
+      return {
+        ...currentMeeting,
+        region: provinceRegion,
+        provinces: [...currentMeeting.provinces, province],
+      }
+    })
+  }
+
   const canGoNext = activeStep < STEP_ITEMS.length - 1
   const canGoPrevious = activeStep > 0
 
@@ -236,12 +268,12 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
         <div className="editor-progress">
           <div className="editor-progress__stat">
-            <strong>{meeting.region}</strong>
+            <strong>{meeting.region || '待选择'}</strong>
             <span>所属大区</span>
           </div>
           <div className="editor-progress__stat">
-            <strong>{meeting.province}</strong>
-            <span>所属省份</span>
+            <strong>{meeting.provinces.length}</strong>
+            <span>已选省份</span>
           </div>
           <div className="editor-progress__stat">
             <strong>{completion.filledSlots}</strong>
@@ -257,106 +289,105 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
           {activeStep === 0 ? (
             <div className="editor-section-stack" style={{ marginTop: 20 }}>
-              <div className="field-grid">
-                <div className="field field--full">
-                  <label htmlFor="meeting-title">会议主题</label>
-                  <input
-                    id="meeting-title"
-                    type="text"
-                    placeholder="例如：耐药菌感染精准诊疗策略专题会"
-                    value={meeting.title}
-                    onChange={(event) => handleBaseFieldChange('title', event.target.value)}
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="meeting-date">会议日期</label>
-                  <input
-                    id="meeting-date"
-                    type="date"
-                    value={meeting.date}
-                    onChange={(event) => handleBaseFieldChange('date', event.target.value)}
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="meeting-time">会议时间</label>
-                  <input
-                    id="meeting-time"
-                    type="time"
-                    value={meeting.time}
-                    onChange={(event) => handleBaseFieldChange('time', event.target.value)}
-                  />
-                </div>
-
-                <div className="field field--full">
-                  <label htmlFor="meeting-project">所属子项目</label>
-                  <select
-                    id="meeting-project"
-                    value={meeting.project}
-                    onChange={(event) => handleBaseFieldChange('project', event.target.value)}
-                  >
-                    {SUBPROJECTS.map((project) => (
-                      <option key={project.value} value={project.value}>
-                        {project.value}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <section className="choice-panel">
+              <section className="map-panel">
                 <div className="choice-panel__header">
                   <div>
-                    <h3>所属大区</h3>
-                    <p>先选大区，再进入对应省份，减少误选。</p>
+                    <h3>中国地图选省份</h3>
+                    <p>先在地图上点击涉及省份，可多选；系统会自动识别所属大区。</p>
                   </div>
                 </div>
-                <div className="choice-grid">
-                  {REGIONS.map((region) => (
-                    <button
-                      type="button"
-                      key={region}
-                      className={`choice-card ${meeting.region === region ? 'choice-card--active' : ''}`}
-                      onClick={() => handleBaseFieldChange('region', region)}
-                    >
-                      <strong>{region}</strong>
-                      <span>{REGION_PROVINCES[region].length} 个省级区域</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="choice-panel">
-                <div className="choice-panel__header">
-                  <div>
-                    <h3>所属省份</h3>
-                    <p>当前大区：{meeting.region}</p>
-                  </div>
-                </div>
-                <div className="chip-grid">
-                  {provinceOptions.map((province) => (
-                    <button
-                      type="button"
-                      key={province}
-                      className={`choice-chip ${meeting.province === province ? 'choice-chip--active' : ''}`}
-                      onClick={() => handleBaseFieldChange('province', province)}
-                    >
-                      {province}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <div className="field field--full">
-                <label htmlFor="meeting-note">备注信息</label>
-                <textarea
-                  id="meeting-note"
-                  placeholder="可记录会前准备、嘉宾待确认事项、资料需求或其他执行备注。"
-                  value={meeting.note}
-                  onChange={(event) => handleBaseFieldChange('note', event.target.value)}
+                <ProvinceMapSelector
+                  selectedProvinces={meeting.provinces}
+                  onToggleProvince={handleProvinceToggle}
                 />
-              </div>
+                <div className="map-panel__footer">
+                  <div className="helper-text">
+                    当前大区：{meeting.region || '待选择'}，已选省份：{formatMeetingProvinces(meeting)}
+                  </div>
+                  {meeting.provinces.length > 0 ? (
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      onClick={() => {
+                        setMeeting((currentMeeting) => ({
+                          ...currentMeeting,
+                          region: '',
+                          provinces: [],
+                        }))
+                        setMapMessage('')
+                      }}
+                    >
+                      清空选择
+                    </button>
+                  ) : null}
+                </div>
+                {mapMessage ? <div className="inline-message">{mapMessage}</div> : null}
+              </section>
+
+              {meeting.provinces.length > 0 ? (
+                <div className="field-grid">
+                  <div className="field field--full">
+                    <label htmlFor="meeting-title">会议主题</label>
+                    <input
+                      id="meeting-title"
+                      type="text"
+                      placeholder="例如：耐药菌感染精准诊疗策略专题会"
+                      value={meeting.title}
+                      onChange={(event) => handleBaseFieldChange('title', event.target.value)}
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="meeting-date">会议日期</label>
+                    <input
+                      id="meeting-date"
+                      type="date"
+                      value={meeting.date}
+                      onChange={(event) => handleBaseFieldChange('date', event.target.value)}
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="meeting-time">会议时间</label>
+                    <input
+                      id="meeting-time"
+                      type="time"
+                      value={meeting.time}
+                      onChange={(event) => handleBaseFieldChange('time', event.target.value)}
+                    />
+                  </div>
+
+                  <div className="field field--full">
+                    <label htmlFor="meeting-project">所属子项目</label>
+                    <select
+                      id="meeting-project"
+                      value={meeting.project}
+                      onChange={(event) => handleBaseFieldChange('project', event.target.value)}
+                    >
+                      {SUBPROJECTS.map((project) => (
+                        <option key={project.value} value={project.value}>
+                          {project.value}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="field field--full">
+                    <label htmlFor="meeting-note">备注信息</label>
+                    <textarea
+                      id="meeting-note"
+                      placeholder="可记录会前准备、嘉宾待确认事项、资料需求或其他执行备注。"
+                      value={meeting.note}
+                      onChange={(event) => handleBaseFieldChange('note', event.target.value)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state" style={{ padding: '28px 24px' }}>
+                  <strong>请先在地图上选择涉及省份</strong>
+                  <div>选完省份后，再继续填写会议主题、时间和项目等基础信息。</div>
+                </div>
+              )}
             </div>
           ) : null}
 
