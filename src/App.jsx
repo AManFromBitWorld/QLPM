@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
   BrowserRouter,
   NavLink,
@@ -6,13 +6,11 @@ import {
   Routes,
   useParams,
 } from 'react-router-dom'
-import { CalendarRange, ClipboardList, LayoutDashboard } from 'lucide-react'
+import { CalendarRange, ClipboardList } from 'lucide-react'
 import './App.css'
-import HomePage from './pages/HomePage.jsx'
 import MeetingEditorPage from './pages/MeetingEditorPage.jsx'
 import MeetingsPage from './pages/MeetingsPage.jsx'
 import MeetingDetailPage from './pages/MeetingDetailPage.jsx'
-import { PROJECT_NAME } from './data/config.js'
 import {
   duplicateMeetingRecord,
   getStoredMeetings,
@@ -42,51 +40,39 @@ function AppShell({
   onSaveMeeting,
 }) {
   const totalMeetings = meetings.length
-  const confirmedMeetings = useMemo(
-    () => meetings.filter((meeting) => meeting.status === '已确认').length,
-    [meetings],
-  )
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar__brand">
-          <span className="topbar__eyebrow">医学会议策划与信息管理</span>
+          <span className="topbar__eyebrow">精准抗感染专项系列会议</span>
           <div>
-            <h1>{PROJECT_NAME}</h1>
-            <p>线上会议统筹、嘉宾收集、资料归档、导出复用</p>
+            <h1>会议信息录入</h1>
+            <p>面向外部填写的主流程入口，先录基础信息，再录人员，最后预览确认。</p>
           </div>
         </div>
-        <div className="topbar__stats">
-          <div>
-            <strong>{totalMeetings}</strong>
-            <span>历史会议</span>
-          </div>
-          <div>
-            <strong>{confirmedMeetings}</strong>
-            <span>已确认会议</span>
-          </div>
+        <div className="topbar__utility">
+          <span className="tag">内部记录 {totalMeetings} 场</span>
         </div>
       </header>
 
       <nav className="main-nav" aria-label="主导航">
         <NavLink to="/" end className="main-nav__link">
-          <LayoutDashboard size={18} />
-          项目总览
-        </NavLink>
-        <NavLink to="/meetings" className="main-nav__link">
-          <ClipboardList size={18} />
-          会议管理
-        </NavLink>
-        <NavLink to="/meetings/new" className="main-nav__link">
           <CalendarRange size={18} />
-          新建会议
+          填写会议信息
+        </NavLink>
+        <NavLink to="/meetings" className="main-nav__link main-nav__link--quiet">
+          <ClipboardList size={18} />
+          内部管理
         </NavLink>
       </nav>
 
       <main className="page-shell">
         <Routes>
-          <Route path="/" element={<HomePage meetings={meetings} />} />
+          <Route
+            path="/"
+            element={<NewMeetingRoute meetings={meetings} onSaveMeeting={onSaveMeeting} />}
+          />
           <Route
             path="/meetings"
             element={

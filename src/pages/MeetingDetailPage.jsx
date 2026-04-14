@@ -88,16 +88,16 @@ function MeetingDetailPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
             <span>所属大区</span>
           </article>
           <article className="summary-card">
+            <strong>{meeting.province}</strong>
+            <span>所属省份</span>
+          </article>
+          <article className="summary-card">
             <strong>{meeting.project}</strong>
             <span>所属子项目</span>
           </article>
           <article className="summary-card">
             <strong>{meeting.status}</strong>
             <span>会议状态</span>
-          </article>
-          <article className="summary-card">
-            <strong>{meeting.topicCount}</strong>
-            <span>讲题数量</span>
           </article>
           <article className="summary-card">
             <strong>

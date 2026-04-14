@@ -1,9 +1,5 @@
 import { ROLE_CONFIG } from '../data/config.js'
-import {
-  flattenParticipants,
-  formatMeetingDateTime,
-  getParticipantNameById,
-} from './meeting.js'
+import { flattenParticipants, formatMeetingDateTime } from './meeting.js'
 
 function buildFileName(meeting, suffix) {
   const raw = `${meeting.project}-${meeting.title || '未命名会议'}-${suffix}`
@@ -16,30 +12,15 @@ export async function exportMeetingToExcel(meeting) {
   const summaryRows = [
     ['项目名称', '精准抗感染专项系列会议'],
     ['所属大区', meeting.region],
+    ['所属省份', meeting.province],
     ['所属子项目', meeting.project],
     ['会议主题', meeting.title || '未填写'],
     ['会议日期', meeting.date || '未填写'],
     ['会议时间', meeting.time || '未填写'],
-    ['讲题数量', meeting.topicCount],
     ['会议状态', meeting.status || '草稿'],
     ['备注信息', meeting.note || ''],
     ['最后更新时间', new Date(meeting.updatedAt).toLocaleString('zh-CN')],
   ]
-
-  const topicRows = meeting.topics.map((topic) => ({
-    讲题顺序: topic.order,
-    讲题标题: topic.title || '',
-    讲题所属子项目: topic.project || '',
-    对应讲者: getParticipantNameById(meeting.attendees?.speaker || [], topic.speakerId, '讲者'),
-    时长: topic.duration || '',
-    相关讨论嘉宾: topic.panelistIds
-      .map((panelistId) =>
-        getParticipantNameById(meeting.attendees?.panelist || [], panelistId, '讨论嘉宾'),
-      )
-      .join('、'),
-    讲题简介: topic.intro || '',
-    备注: topic.note || '',
-  }))
 
   const participantRows = flattenParticipants(meeting).map((person) => ({
     角色: person.roleLabel,
@@ -51,20 +32,9 @@ export async function exportMeetingToExcel(meeting) {
   }))
 
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows)
-  const topicSheet = XLSX.utils.json_to_sheet(topicRows)
   const participantSheet = XLSX.utils.json_to_sheet(participantRows)
 
   summarySheet['!cols'] = [{ wch: 14 }, { wch: 42 }]
-  topicSheet['!cols'] = [
-    { wch: 10 },
-    { wch: 32 },
-    { wch: 16 },
-    { wch: 24 },
-    { wch: 12 },
-    { wch: 28 },
-    { wch: 32 },
-    { wch: 28 },
-  ]
   participantSheet['!cols'] = [
     { wch: 12 },
     { wch: 8 },
@@ -75,7 +45,6 @@ export async function exportMeetingToExcel(meeting) {
   ]
 
   XLSX.utils.book_append_sheet(workbook, summarySheet, '会议概览')
-  XLSX.utils.book_append_sheet(workbook, topicSheet, '讲题信息')
   XLSX.utils.book_append_sheet(workbook, participantSheet, '参会人员')
   XLSX.writeFile(workbook, `${buildFileName(meeting, '会议资料')}.xlsx`)
 }
@@ -188,30 +157,6 @@ export function printMeetingDocument(meeting, element) {
           .participant-table thead {
             background: #f4f8fb;
           }
-          .topic-preview-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
-          }
-          .topic-preview-card {
-            border: 1px solid #dce6ef;
-            border-radius: 8px;
-            padding: 14px;
-          }
-          .topic-preview-card__meta {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin: 12px 0;
-          }
-          .topic-preview-card__meta span,
-          .topic-preview-card__block span {
-            display: block;
-            font-size: 12px;
-            color: #64788f;
-            margin-bottom: 6px;
-          }
           .tag {
             display: inline-block;
             padding: 4px 8px;
@@ -258,19 +203,13 @@ export function buildSearchIndex(meeting) {
     )
     .join(' ')
 
-  const topicText = (meeting.topics || [])
-    .map((topic) =>
-      [topic.title, topic.project, topic.note, topic.intro, topic.duration].join(' '),
-    )
-    .join(' ')
-
   return [
     meeting.title,
     meeting.project,
     meeting.region,
+    meeting.province,
     meeting.note,
     formatMeetingDateTime(meeting),
-    topicText,
     participantText,
   ]
     .join(' ')

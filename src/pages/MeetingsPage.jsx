@@ -77,7 +77,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
             <input
               id="meeting-search"
               type="text"
-              placeholder="按主题、项目、嘉宾姓名、医院等搜索"
+              placeholder="按主题、项目、大区、省份、嘉宾姓名、医院等搜索"
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
             />
@@ -147,6 +147,7 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
                     <div>
                       <div className="button-row" style={{ gap: 8 }}>
                         <span className="tag">{meeting.region}</span>
+                        <span className="tag">{meeting.province}</span>
                         <span className="tag">{meeting.project}</span>
                       </div>
                       <h3>{meeting.title || '未命名会议'}</h3>
@@ -175,8 +176,8 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
                       <strong>{meeting.date || '待定'}</strong>
                     </div>
                     <div>
-                      <span>讲题数量</span>
-                      <strong>{meeting.topicCount}</strong>
+                      <span>所属省份</span>
+                      <strong>{meeting.province}</strong>
                     </div>
                     <div>
                       <span>嘉宾席位</span>

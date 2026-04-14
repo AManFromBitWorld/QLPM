@@ -1,4 +1,4 @@
-import { ROLE_CONFIG } from '../data/config.js'
+import { REGION_PROVINCES, ROLE_CONFIG } from '../data/config.js'
 
 function generateId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -22,40 +22,23 @@ export function createRoleEntries(minimum) {
   return Array.from({ length: minimum }, () => createEmptyParticipant())
 }
 
-export function createEmptyTopic(order, project = '焦点对话') {
-  return {
-    id: generateId(),
-    title: '',
-    project,
-    order,
-    speakerId: '',
-    note: '',
-    intro: '',
-    duration: '',
-    panelistIds: [],
-  }
-}
-
-export function createTopicEntries(count, project = '焦点对话') {
-  return Array.from({ length: count }, (_, index) => createEmptyTopic(index + 1, project))
-}
-
 export function createMeetingDraft() {
   const attendees = ROLE_CONFIG.reduce((collection, role) => {
     collection[role.key] = createRoleEntries(role.minimum)
     return collection
   }, {})
 
+  const defaultRegion = '东区'
+
   return {
     id: generateId(),
-    region: '东区',
+    region: defaultRegion,
+    province: REGION_PROVINCES[defaultRegion][0],
     project: '焦点对话',
     title: '',
     date: '',
     time: '',
     note: '',
-    topicCount: 3,
-    topics: createTopicEntries(3, '焦点对话'),
     status: '草稿',
     attendees,
     createdAt: new Date().toISOString(),
@@ -70,9 +53,11 @@ export function cloneMeeting(meeting) {
 export function normalizeMeeting(meeting) {
   const fallback = createMeetingDraft()
   const source = meeting ? cloneMeeting(meeting) : fallback
-  const topicCount = [2, 3, 4].includes(Number(source.topicCount))
-    ? Number(source.topicCount)
-    : fallback.topicCount
+  const region = source.region || fallback.region
+  const provinceOptions = REGION_PROVINCES[region] || REGION_PROVINCES[fallback.region]
+  const province = provinceOptions.includes(source.province)
+    ? source.province
+    : provinceOptions[0]
 
   const attendees = ROLE_CONFIG.reduce((collection, role) => {
     const incoming = Array.isArray(source.attendees?.[role.key])
@@ -95,29 +80,13 @@ export function normalizeMeeting(meeting) {
 
   return {
     id: source.id || generateId(),
-    region: source.region || fallback.region,
+    region,
+    province,
     project: source.project || fallback.project,
     title: source.title || '',
     date: source.date || '',
     time: source.time || '',
     note: source.note || '',
-    topicCount,
-    topics: Array.from({ length: topicCount }, (_, index) => {
-      const incomingTopic = source.topics?.[index]
-      return {
-        id: incomingTopic?.id || generateId(),
-        title: incomingTopic?.title || '',
-        project: incomingTopic?.project || source.project || fallback.project,
-        order: index + 1,
-        speakerId: incomingTopic?.speakerId || '',
-        note: incomingTopic?.note || '',
-        intro: incomingTopic?.intro || '',
-        duration: incomingTopic?.duration || '',
-        panelistIds: Array.isArray(incomingTopic?.panelistIds)
-          ? incomingTopic.panelistIds
-          : [],
-      }
-    }),
     status: source.status || '草稿',
     attendees,
     createdAt: source.createdAt || new Date().toISOString(),
@@ -137,24 +106,6 @@ export function flattenParticipants(meeting) {
       title: person.title || '',
     })),
   )
-}
-
-export function getParticipantDisplay(person, index, fallbackPrefix) {
-  if (!person) {
-    return '待关联'
-  }
-
-  const baseLabel = person.name || `${fallbackPrefix}${index + 1}`
-  return person.hospital ? `${baseLabel} · ${person.hospital}` : baseLabel
-}
-
-export function getParticipantNameById(participants, participantId, fallbackPrefix) {
-  const participantIndex = participants.findIndex((person) => person.id === participantId)
-  if (participantIndex < 0) {
-    return '待关联'
-  }
-
-  return getParticipantDisplay(participants[participantIndex], participantIndex, fallbackPrefix)
 }
 
 export function getFilledParticipantCount(meeting) {

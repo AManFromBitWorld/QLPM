@@ -23,7 +23,12 @@ export const SUBPROJECTS = [
 
 export const REGIONS = ['东区', '西区', '北区', '南区']
 
-export const TOPIC_COUNT_OPTIONS = [2, 3, 4]
+export const REGION_PROVINCES = {
+  东区: ['上海', '江苏', '浙江', '安徽', '福建', '江西', '山东'],
+  西区: ['重庆', '四川', '贵州', '云南', '西藏', '陕西', '甘肃', '青海', '宁夏', '新疆'],
+  北区: ['北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江', '河南'],
+  南区: ['广东', '广西', '海南', '湖南', '湖北'],
+}
 
 export const ROLE_CONFIG = [
   {
@@ -60,8 +65,7 @@ export const PERSON_FIELDS = [
 ]
 
 export const STEP_ITEMS = [
-  { key: 'base', label: '基础信息', description: '定义会议主题、时间和归属项目。' },
-  { key: 'topics', label: '讲题管理', description: '根据讲题数量配置本场会议的主题模块。' },
+  { key: 'base', label: '基础信息', description: '填写会议主题、时间、大区、省份和所属项目。' },
   { key: 'guests', label: '人员录入', description: '按角色录入医院、姓名、科室、职称。' },
   { key: 'preview', label: '预览确认', description: '提交前统一核对，便于导出归档。' },
 ]

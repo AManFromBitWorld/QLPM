@@ -1,5 +1,4 @@
 import { ROLE_CONFIG } from '../data/config.js'
-import { getParticipantNameById } from '../utils/meeting.js'
 
 function renderValue(value, fallback = '待补充') {
   return value ? value : <span className="placeholder-text">{fallback}</span>
@@ -9,9 +8,13 @@ function MeetingPreview({ meeting, previewRef }) {
   return (
     <div className="preview-document" ref={previewRef}>
       <div className="preview-document__hero">
-        <span className="tag">{meeting.project}</span>
+        <div className="button-row" style={{ gap: 8 }}>
+          <span className="tag">{meeting.region}</span>
+          <span className="tag">{meeting.province}</span>
+          <span className="tag">{meeting.project}</span>
+        </div>
         <h3>{meeting.title || '未命名会议'}</h3>
-        <p>用于会前统筹、嘉宾信息确认、资料导出和执行归档。</p>
+        <p>用于会前核对嘉宾资料、导出会议档案和执行团队内部确认。</p>
       </div>
 
       <div className="preview-document__body">
@@ -19,6 +22,10 @@ function MeetingPreview({ meeting, previewRef }) {
           <article className="detail-card">
             <span>所属大区</span>
             <strong>{renderValue(meeting.region)}</strong>
+          </article>
+          <article className="detail-card">
+            <span>所属省份</span>
+            <strong>{renderValue(meeting.province)}</strong>
           </article>
           <article className="detail-card">
             <span>所属子项目</span>
@@ -36,82 +43,10 @@ function MeetingPreview({ meeting, previewRef }) {
             <span>会议状态</span>
             <strong>{renderValue(meeting.status, '草稿')}</strong>
           </article>
-          <article className="detail-card">
-            <span>讲题数量</span>
-            <strong>{meeting.topicCount}</strong>
-          </article>
-          <article className="detail-card">
+          <article className="detail-card detail-card--full">
             <span>备注信息</span>
             <strong>{renderValue(meeting.note)}</strong>
           </article>
-        </section>
-
-        <section>
-          <div className="page-header" style={{ marginBottom: 12 }}>
-            <div>
-              <h2 style={{ fontSize: 22 }}>讲题列表</h2>
-              <p>按讲题模块展示主题、对应讲者和讨论支持信息。</p>
-            </div>
-            <span className="tag">{meeting.topicCount} 个讲题</span>
-          </div>
-
-          <div className="topic-preview-grid">
-            {meeting.topics.map((topic) => (
-              <article className="topic-preview-card" key={topic.id}>
-                <div className="topic-preview-card__top">
-                  <span className="tag">第 {topic.order} 讲题</span>
-                  <strong>{renderValue(topic.title)}</strong>
-                </div>
-                <div className="topic-preview-card__meta">
-                  <div>
-                    <span>讲题子项目</span>
-                    <strong>{renderValue(topic.project)}</strong>
-                  </div>
-                  <div>
-                    <span>对应讲者</span>
-                    <strong>
-                      {renderValue(
-                        getParticipantNameById(
-                          meeting.attendees?.speaker || [],
-                          topic.speakerId,
-                          '讲者',
-                        ),
-                        '待关联',
-                      )}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>时长</span>
-                    <strong>{renderValue(topic.duration)}</strong>
-                  </div>
-                  <div>
-                    <span>相关讨论嘉宾</span>
-                    <strong>
-                      {topic.panelistIds.length
-                        ? topic.panelistIds
-                            .map((panelistId) =>
-                              getParticipantNameById(
-                                meeting.attendees?.panelist || [],
-                                panelistId,
-                                '讨论嘉宾',
-                              ),
-                            )
-                            .join('、')
-                        : renderValue('')}
-                    </strong>
-                  </div>
-                </div>
-                <div className="topic-preview-card__block">
-                  <span>讲题简介</span>
-                  <p>{renderValue(topic.intro)}</p>
-                </div>
-                <div className="topic-preview-card__block">
-                  <span>备注</span>
-                  <p>{renderValue(topic.note)}</p>
-                </div>
-              </article>
-            ))}
-          </div>
         </section>
 
         {ROLE_CONFIG.map((role) => {
