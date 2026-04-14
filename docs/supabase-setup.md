@@ -7,6 +7,19 @@ VITE_SUPABASE_URL=你的 Supabase 项目地址
 VITE_SUPABASE_ANON_KEY=你的 Supabase 匿名公钥
 ```
 
+## GitHub Pages 部署变量
+
+当前仓库已经配置为在 GitHub Pages 构建时读取下面两个 `Actions secrets`：
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+请在 GitHub 仓库中进入：
+
+`Settings -> Secrets and variables -> Actions -> New repository secret`
+
+分别新增这两个 secret。保存后，只要再次 push 到 `main`，GitHub Pages 就会带着协作配置重新构建。
+
 ## 建表 SQL
 
 ```sql
