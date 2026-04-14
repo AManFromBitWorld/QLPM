@@ -1,4 +1,4 @@
-import { MinusCircle, PlusCircle } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { PERSON_FIELDS } from '../data/config.js'
 import { getRoleParticipantCount } from '../utils/meeting.js'
 
@@ -24,10 +24,10 @@ function RoleSection({
         </div>
         <button
           type="button"
-          className="button button--ghost"
+          className="role-section__action"
           onClick={() => onAddParticipant(role.key)}
         >
-          <PlusCircle size={16} />
+          <Plus size={14} />
           新增席位
         </button>
       </div>
@@ -50,12 +50,13 @@ function RoleSection({
                 </div>
                 <button
                   type="button"
-                  className="button button--secondary"
+                  className="person-card__remove"
                   onClick={() => onRemoveParticipant(role.key, person.id)}
                   disabled={!removable}
+                  aria-label={`删除${role.label}${index + 1}`}
+                  title={removable ? '删除席位' : '标准席位不可删除'}
                 >
-                  <MinusCircle size={16} />
-                  删除
+                  <X size={14} />
                 </button>
               </div>
 

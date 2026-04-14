@@ -689,6 +689,19 @@
   gap: 14px;
 }
 
+.basic-workspace {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.basic-workspace__placeholder {
+  min-height: 280px;
+  display: grid;
+  align-content: center;
+}
+
 .people-workspace {
   display: grid;
   grid-template-columns: 308px minmax(0, 1fr);
@@ -872,6 +885,11 @@
   background: #fbfdff;
   display: grid;
   gap: 12px;
+}
+
+.selection-panel--sidebar {
+  position: sticky;
+  top: 132px;
 }
 
 .selection-panel__intro,
@@ -1104,7 +1122,7 @@
 .role-section__header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: start;
   gap: 16px;
   padding: 14px 16px;
   border-bottom: 1px solid rgba(73, 105, 137, 0.1);
@@ -1119,6 +1137,29 @@
 .role-section__header p {
   margin: 6px 0 0;
   color: #61758a;
+}
+
+.role-section__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(73, 105, 137, 0.14);
+  background: #ffffff;
+  color: #456279;
+  font-size: 13px;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.role-section__action:hover {
+  border-color: rgba(15, 103, 165, 0.18);
+  color: #0f5d95;
+  background: rgba(15, 103, 165, 0.04);
 }
 
 .role-section__slots {
@@ -1137,9 +1178,9 @@
 .person-card__top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: start;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .person-card__top strong {
@@ -1148,8 +1189,42 @@
 }
 
 .person-card__meta {
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #f4f8fb;
+  font-size: 12px;
   color: #6a7e91;
+}
+
+.person-card__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(73, 105, 137, 0.12);
+  background: #ffffff;
+  color: #6c8195;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.person-card__remove:hover:not(:disabled) {
+  border-color: rgba(177, 72, 72, 0.18);
+  background: rgba(177, 72, 72, 0.05);
+  color: #b14848;
+}
+
+.person-card__remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .person-card__grid {
@@ -1374,10 +1449,12 @@
 }
 
 @media (max-width: 1280px) {
+  .basic-workspace,
   .people-workspace {
     grid-template-columns: 1fr;
   }
 
+  .selection-panel--sidebar,
   .people-sidebar {
     position: static;
   }

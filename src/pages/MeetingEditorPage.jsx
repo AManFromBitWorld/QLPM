@@ -268,190 +268,192 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
         {activeStep === 0 ? (
           <div className="editor-section-stack editor-section-stack--dense" style={{ marginTop: 20 }}>
-            <section className="selection-panel">
-              <div className="selection-panel__intro">
-                <div>
-                  <h3>地域范围</h3>
-                  <p>先锁定大区与省份，再补充会议主题、时间和项目归属。</p>
-                </div>
-                <div className="selection-panel__stats">
-                  <div className="selection-stat">
-                    <span>所属大区</span>
-                    <strong>{meeting.region || '未选择'}</strong>
-                  </div>
-                  <div className="selection-stat">
-                    <span>已选省份</span>
-                    <strong>{meeting.provinces.length}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="selection-block">
-                <div className="selection-block__header">
+            <div className="basic-workspace">
+              <section className="selection-panel selection-panel--sidebar">
+                <div className="selection-panel__intro">
                   <div>
-                    <span className="selection-block__step">步骤 1</span>
-                    <h4>选择大区</h4>
+                    <h3>地域选择</h3>
+                    <p>先锁定大区与省份，再进入右侧基础表单。</p>
                   </div>
-                  <p>先确定本场会议所属的管理范围。</p>
-                </div>
-                <div className="choice-grid choice-grid--compact">
-                  {REGIONS.map((region) => (
-                    <button
-                      type="button"
-                      key={region}
-                      className={`choice-card ${meeting.region === region ? 'choice-card--active' : ''}`}
-                      onClick={() => handleRegionSelect(region)}
-                    >
-                      <strong>{region}</strong>
-                      <span>{REGION_PROVINCES[region].length} 个省级区域</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {meeting.region ? (
-                <div className="selection-block selection-block--secondary">
-                  <div className="selection-block__header selection-block__header--inline">
-                    <div>
-                      <span className="selection-block__step">步骤 2</span>
-                      <h4>勾选涉及省份</h4>
+                  <div className="selection-panel__stats">
+                    <div className="selection-stat">
+                      <span>所属大区</span>
+                      <strong>{meeting.region || '未选择'}</strong>
                     </div>
-                    <p>当前大区：{meeting.region}，支持多选。</p>
+                    <div className="selection-stat">
+                      <span>已选省份</span>
+                      <strong>{meeting.provinces.length}</strong>
+                    </div>
                   </div>
-                  <div className="chip-grid chip-grid--compact">
-                    {provinceOptions.map((province) => (
+                </div>
+
+                <div className="selection-block">
+                  <div className="selection-block__header">
+                    <div>
+                      <span className="selection-block__step">步骤 1</span>
+                      <h4>选择大区</h4>
+                    </div>
+                    <p>先确定本场会议所属的管理范围。</p>
+                  </div>
+                  <div className="choice-grid choice-grid--compact">
+                    {REGIONS.map((region) => (
                       <button
                         type="button"
-                        key={province}
-                        className={`choice-chip ${
-                          meeting.provinces.includes(province) ? 'choice-chip--active' : ''
-                        }`}
-                        onClick={() => handleProvinceToggle(province)}
+                        key={region}
+                        className={`choice-card ${meeting.region === region ? 'choice-card--active' : ''}`}
+                        onClick={() => handleRegionSelect(region)}
                       >
-                        {province}
+                        <strong>{region}</strong>
+                        <span>{REGION_PROVINCES[region].length} 个省级区域</span>
                       </button>
                     ))}
                   </div>
+                </div>
 
-                  {meeting.provinces.length > 0 ? (
-                    <div className="selection-tags-bar">
-                      <div className="helper-text">
-                        已选省份：{formatMeetingProvinces(meeting)}
+                {meeting.region ? (
+                  <div className="selection-block selection-block--secondary">
+                    <div className="selection-block__header selection-block__header--inline">
+                      <div>
+                        <span className="selection-block__step">步骤 2</span>
+                        <h4>勾选涉及省份</h4>
                       </div>
-                      <div className="selection-tags-bar__actions">
-                        <div className="selected-tags selected-tags--compact">
-                          {meeting.provinces.map((province) => (
-                            <button
-                              type="button"
-                              key={province}
-                              className="selected-tag"
-                              onClick={() => handleProvinceToggle(province)}
-                            >
-                              {province}
-                              <span>×</span>
-                            </button>
-                          ))}
-                        </div>
+                      <p>当前大区：{meeting.region}，支持多选。</p>
+                    </div>
+                    <div className="chip-grid chip-grid--compact">
+                      {provinceOptions.map((province) => (
                         <button
                           type="button"
-                          className="button button--secondary"
-                          onClick={() =>
-                            setMeeting((currentMeeting) => ({
-                              ...currentMeeting,
-                              provinces: [],
-                            }))
-                          }
+                          key={province}
+                          className={`choice-chip ${
+                            meeting.provinces.includes(province) ? 'choice-chip--active' : ''
+                          }`}
+                          onClick={() => handleProvinceToggle(province)}
                         >
-                          清空省份
+                          {province}
                         </button>
+                      ))}
+                    </div>
+
+                    {meeting.provinces.length > 0 ? (
+                      <div className="selection-tags-bar">
+                        <div className="helper-text">
+                          已选省份：{formatMeetingProvinces(meeting)}
+                        </div>
+                        <div className="selection-tags-bar__actions">
+                          <div className="selected-tags selected-tags--compact">
+                            {meeting.provinces.map((province) => (
+                              <button
+                                type="button"
+                                key={province}
+                                className="selected-tag"
+                                onClick={() => handleProvinceToggle(province)}
+                              >
+                                {province}
+                                <span>×</span>
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="button button--secondary"
+                            onClick={() =>
+                              setMeeting((currentMeeting) => ({
+                                ...currentMeeting,
+                                provinces: [],
+                              }))
+                            }
+                          >
+                            清空省份
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      <div className="selection-inline-hint">
+                        请选择一个或多个省份后，再继续填写本场会议基础信息。
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="selection-inline-hint">
+                    请选择东区、西区、北区或南区后，继续勾选本场会议涉及的省份。
+                  </div>
+                )}
+              </section>
+
+              {meeting.provinces.length > 0 ? (
+                <section className="base-form-panel">
+                  <div className="selection-block__header selection-block__header--inline">
+                    <div>
+                      <span className="selection-block__step">步骤 3</span>
+                      <h4>基础表单</h4>
                     </div>
-                  ) : (
-                    <div className="selection-inline-hint">
-                      请选择一个或多个省份后，再继续填写本场会议基础信息。
+                    <p>地区范围已锁定，继续补齐会议档案。</p>
+                  </div>
+                  <div className="field-grid field-grid--dense">
+                    <div className="field field--full">
+                      <label htmlFor="meeting-title">会议主题</label>
+                      <input
+                        id="meeting-title"
+                        type="text"
+                        placeholder="例如：耐药菌感染精准诊疗策略专题会"
+                        value={meeting.title}
+                        onChange={(event) => handleBaseFieldChange('title', event.target.value)}
+                      />
                     </div>
-                  )}
-                </div>
+
+                    <div className="field">
+                      <label htmlFor="meeting-date">会议日期</label>
+                      <input
+                        id="meeting-date"
+                        type="date"
+                        value={meeting.date}
+                        onChange={(event) => handleBaseFieldChange('date', event.target.value)}
+                      />
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="meeting-time">会议时间</label>
+                      <input
+                        id="meeting-time"
+                        type="time"
+                        value={meeting.time}
+                        onChange={(event) => handleBaseFieldChange('time', event.target.value)}
+                      />
+                    </div>
+
+                    <div className="field field--full">
+                      <label htmlFor="meeting-project">所属子项目</label>
+                      <select
+                        id="meeting-project"
+                        value={meeting.project}
+                        onChange={(event) => handleBaseFieldChange('project', event.target.value)}
+                      >
+                        {SUBPROJECTS.map((project) => (
+                          <option key={project.value} value={project.value}>
+                            {project.value}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="field field--full">
+                      <label htmlFor="meeting-note">备注信息</label>
+                      <textarea
+                        id="meeting-note"
+                        placeholder="可记录会前准备、嘉宾待确认事项、资料需求或其他执行备注。"
+                        value={meeting.note}
+                        onChange={(event) => handleBaseFieldChange('note', event.target.value)}
+                      />
+                    </div>
+                  </div>
+                </section>
               ) : (
-                <div className="selection-inline-hint">
-                  请选择东区、西区、北区或南区后，继续勾选本场会议涉及的省份。
+                <div className="empty-state empty-state--compact basic-workspace__placeholder">
+                  <strong>右侧表单待解锁</strong>
+                  <div>先在左侧完成大区和省份多选，基础信息表单会立即显示。</div>
                 </div>
               )}
-            </section>
-
-            {meeting.provinces.length > 0 ? (
-              <section className="base-form-panel">
-                <div className="selection-block__header selection-block__header--inline">
-                  <div>
-                    <span className="selection-block__step">步骤 3</span>
-                    <h4>填写基础信息</h4>
-                  </div>
-                  <p>地区范围已锁定，继续补齐会议档案。</p>
-                </div>
-                <div className="field-grid field-grid--dense">
-                  <div className="field field--full">
-                    <label htmlFor="meeting-title">会议主题</label>
-                    <input
-                      id="meeting-title"
-                      type="text"
-                      placeholder="例如：耐药菌感染精准诊疗策略专题会"
-                      value={meeting.title}
-                      onChange={(event) => handleBaseFieldChange('title', event.target.value)}
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="meeting-date">会议日期</label>
-                    <input
-                      id="meeting-date"
-                      type="date"
-                      value={meeting.date}
-                      onChange={(event) => handleBaseFieldChange('date', event.target.value)}
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="meeting-time">会议时间</label>
-                    <input
-                      id="meeting-time"
-                      type="time"
-                      value={meeting.time}
-                      onChange={(event) => handleBaseFieldChange('time', event.target.value)}
-                    />
-                  </div>
-
-                  <div className="field field--full">
-                    <label htmlFor="meeting-project">所属子项目</label>
-                    <select
-                      id="meeting-project"
-                      value={meeting.project}
-                      onChange={(event) => handleBaseFieldChange('project', event.target.value)}
-                    >
-                      {SUBPROJECTS.map((project) => (
-                        <option key={project.value} value={project.value}>
-                          {project.value}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="field field--full">
-                    <label htmlFor="meeting-note">备注信息</label>
-                    <textarea
-                      id="meeting-note"
-                      placeholder="可记录会前准备、嘉宾待确认事项、资料需求或其他执行备注。"
-                      value={meeting.note}
-                      onChange={(event) => handleBaseFieldChange('note', event.target.value)}
-                    />
-                  </div>
-                </div>
-              </section>
-            ) : (
-              <div className="empty-state empty-state--compact">
-                <strong>先完成省份勾选</strong>
-                <div>选完一个或多个省份后，基础信息表单会在下方展开。</div>
-              </div>
-            )}
+            </div>
           </div>
         ) : null}
 
