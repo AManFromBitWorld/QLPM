@@ -196,95 +196,110 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
         {message ? <div className="inline-message">{message}</div> : null}
 
-        {activeStep === 0 ? (
-          <div className="field-grid" style={{ marginTop: 20 }}>
-            <div className="field field--full">
-              <label htmlFor="meeting-title">会议主题</label>
-              <input
-                id="meeting-title"
-                type="text"
-                placeholder="例如：耐药菌感染精准诊疗策略专题会"
-                value={meeting.title}
-                onChange={(event) => handleBaseFieldChange('title', event.target.value)}
-              />
-            </div>
+          {activeStep === 0 ? (
+            <div className="editor-section-stack" style={{ marginTop: 20 }}>
+              <div className="field-grid">
+                <div className="field field--full">
+                  <label htmlFor="meeting-title">会议主题</label>
+                  <input
+                    id="meeting-title"
+                    type="text"
+                    placeholder="例如：耐药菌感染精准诊疗策略专题会"
+                    value={meeting.title}
+                    onChange={(event) => handleBaseFieldChange('title', event.target.value)}
+                  />
+                </div>
 
-            <div className="field">
-              <label htmlFor="meeting-date">会议日期</label>
-              <input
-                id="meeting-date"
-                type="date"
-                value={meeting.date}
-                onChange={(event) => handleBaseFieldChange('date', event.target.value)}
-              />
-            </div>
+                <div className="field">
+                  <label htmlFor="meeting-date">会议日期</label>
+                  <input
+                    id="meeting-date"
+                    type="date"
+                    value={meeting.date}
+                    onChange={(event) => handleBaseFieldChange('date', event.target.value)}
+                  />
+                </div>
 
-            <div className="field">
-              <label htmlFor="meeting-time">会议时间</label>
-              <input
-                id="meeting-time"
-                type="time"
-                value={meeting.time}
-                onChange={(event) => handleBaseFieldChange('time', event.target.value)}
-              />
-            </div>
+                <div className="field">
+                  <label htmlFor="meeting-time">会议时间</label>
+                  <input
+                    id="meeting-time"
+                    type="time"
+                    value={meeting.time}
+                    onChange={(event) => handleBaseFieldChange('time', event.target.value)}
+                  />
+                </div>
 
-            <div className="field">
-              <label htmlFor="meeting-region">所属大区</label>
-              <select
-                id="meeting-region"
-                value={meeting.region}
-                onChange={(event) => handleBaseFieldChange('region', event.target.value)}
-              >
-                {REGIONS.map((region) => (
-                  <option key={region} value={region}>
-                    {region}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div className="field field--full">
+                  <label htmlFor="meeting-project">所属子项目</label>
+                  <select
+                    id="meeting-project"
+                    value={meeting.project}
+                    onChange={(event) => handleBaseFieldChange('project', event.target.value)}
+                  >
+                    {SUBPROJECTS.map((project) => (
+                      <option key={project.value} value={project.value}>
+                        {project.value}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-            <div className="field">
-              <label htmlFor="meeting-province">所属省份</label>
-              <select
-                id="meeting-province"
-                value={meeting.province}
-                onChange={(event) => handleBaseFieldChange('province', event.target.value)}
-              >
-                {provinceOptions.map((province) => (
-                  <option key={province} value={province}>
-                    {province}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <section className="choice-panel">
+                <div className="choice-panel__header">
+                  <div>
+                    <h3>所属大区</h3>
+                    <p>先选大区，再进入对应省份，减少误选。</p>
+                  </div>
+                </div>
+                <div className="choice-grid">
+                  {REGIONS.map((region) => (
+                    <button
+                      type="button"
+                      key={region}
+                      className={`choice-card ${meeting.region === region ? 'choice-card--active' : ''}`}
+                      onClick={() => handleBaseFieldChange('region', region)}
+                    >
+                      <strong>{region}</strong>
+                      <span>{REGION_PROVINCES[region].length} 个省级区域</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
 
-            <div className="field">
-              <label htmlFor="meeting-project">所属子项目</label>
-              <select
-                id="meeting-project"
-                value={meeting.project}
-                onChange={(event) => handleBaseFieldChange('project', event.target.value)}
-              >
-                {SUBPROJECTS.map((project) => (
-                  <option key={project.value} value={project.value}>
-                    {project.value}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <section className="choice-panel">
+                <div className="choice-panel__header">
+                  <div>
+                    <h3>所属省份</h3>
+                    <p>当前大区：{meeting.region}</p>
+                  </div>
+                </div>
+                <div className="chip-grid">
+                  {provinceOptions.map((province) => (
+                    <button
+                      type="button"
+                      key={province}
+                      className={`choice-chip ${meeting.province === province ? 'choice-chip--active' : ''}`}
+                      onClick={() => handleBaseFieldChange('province', province)}
+                    >
+                      {province}
+                    </button>
+                  ))}
+                </div>
+              </section>
 
-            <div className="field field--full">
-              <label htmlFor="meeting-note">备注信息</label>
-              <textarea
-                id="meeting-note"
-                placeholder="可记录会前准备、嘉宾待确认事项、资料需求或其他执行备注。"
-                value={meeting.note}
-                onChange={(event) => handleBaseFieldChange('note', event.target.value)}
-              />
+              <div className="field field--full">
+                <label htmlFor="meeting-note">备注信息</label>
+                <textarea
+                  id="meeting-note"
+                  placeholder="可记录会前准备、嘉宾待确认事项、资料需求或其他执行备注。"
+                  value={meeting.note}
+                  onChange={(event) => handleBaseFieldChange('note', event.target.value)}
+                />
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
         {activeStep === 1 ? (
           <div className="role-grid" style={{ marginTop: 20 }}>

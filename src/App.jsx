@@ -6,7 +6,7 @@ import {
   Routes,
   useParams,
 } from 'react-router-dom'
-import { CalendarRange, ClipboardList } from 'lucide-react'
+import { CalendarRange } from 'lucide-react'
 import './App.css'
 import MeetingEditorPage from './pages/MeetingEditorPage.jsx'
 import MeetingsPage from './pages/MeetingsPage.jsx'
@@ -60,10 +60,6 @@ function AppShell({
         <NavLink to="/" end className="main-nav__link">
           <CalendarRange size={18} />
           填写会议信息
-        </NavLink>
-        <NavLink to="/meetings" className="main-nav__link main-nav__link--quiet">
-          <ClipboardList size={18} />
-          内部管理
         </NavLink>
       </nav>
 

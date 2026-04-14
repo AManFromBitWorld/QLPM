@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Copy, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react'
-import { REGIONS, SUBPROJECTS } from '../data/config.js'
+import { REGIONS, REGION_PROVINCES, SUBPROJECTS } from '../data/config.js'
 import { buildRoleSummary, buildSearchIndex } from '../utils/export.js'
 
 function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
@@ -9,7 +9,15 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
   const [searchText, setSearchText] = useState('')
   const [projectFilter, setProjectFilter] = useState('全部子项目')
   const [regionFilter, setRegionFilter] = useState('全部大区')
+  const [provinceFilter, setProvinceFilter] = useState('全部省份')
   const [dateFilter, setDateFilter] = useState('')
+
+  const provinceOptions =
+    regionFilter === '全部大区'
+      ? Array.from(
+          new Set(Object.values(REGION_PROVINCES).flat()),
+        )
+      : REGION_PROVINCES[regionFilter] || []
 
   const filteredMeetings = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
@@ -18,13 +26,21 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
       const projectMatches =
         projectFilter === '全部子项目' || meeting.project === projectFilter
       const regionMatches = regionFilter === '全部大区' || meeting.region === regionFilter
+      const provinceMatches =
+        provinceFilter === '全部省份' || meeting.province === provinceFilter
       const dateMatches = !dateFilter || meeting.date === dateFilter
       const searchMatches =
         !normalizedSearch || buildSearchIndex(meeting).includes(normalizedSearch)
 
-      return projectMatches && regionMatches && dateMatches && searchMatches
+      return (
+        projectMatches &&
+        regionMatches &&
+        provinceMatches &&
+        dateMatches &&
+        searchMatches
+      )
     })
-  }, [dateFilter, meetings, projectFilter, regionFilter, searchText])
+  }, [dateFilter, meetings, projectFilter, provinceFilter, regionFilter, searchText])
 
   const regionSummary = REGIONS.map((region) => ({
     region,
@@ -104,12 +120,31 @@ function MeetingsPage({ meetings, onDeleteMeeting, onDuplicateMeeting }) {
             <select
               id="region-filter"
               value={regionFilter}
-              onChange={(event) => setRegionFilter(event.target.value)}
+              onChange={(event) => {
+                setRegionFilter(event.target.value)
+                setProvinceFilter('全部省份')
+              }}
             >
               <option value="全部大区">全部大区</option>
               {REGIONS.map((region) => (
                 <option key={region} value={region}>
                   {region}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="province-filter">省份筛选</label>
+            <select
+              id="province-filter"
+              value={provinceFilter}
+              onChange={(event) => setProvinceFilter(event.target.value)}
+            >
+              <option value="全部省份">全部省份</option>
+              {provinceOptions.map((province) => (
+                <option key={province} value={province}>
+                  {province}
                 </option>
               ))}
             </select>

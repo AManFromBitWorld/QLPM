@@ -86,10 +86,6 @@
   color: #ffffff;
 }
 
-.main-nav__link--quiet {
-  margin-left: auto;
-}
-
 .page-shell {
   width: min(1220px, calc(100% - 32px));
   margin: 0 auto;
@@ -638,6 +634,11 @@
   padding: 24px;
 }
 
+.editor-section-stack {
+  display: grid;
+  gap: 18px;
+}
+
 .editor-progress {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -663,6 +664,90 @@
 .editor-progress__stat span {
   font-size: 13px;
   color: #647a8f;
+}
+
+.choice-panel {
+  padding: 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(73, 105, 137, 0.12);
+  background: #fbfdff;
+}
+
+.choice-panel__header {
+  margin-bottom: 14px;
+}
+
+.choice-panel__header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #143553;
+}
+
+.choice-panel__header p {
+  margin: 6px 0 0;
+  color: #61758a;
+}
+
+.choice-grid,
+.chip-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.choice-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.choice-card,
+.choice-chip {
+  min-height: 48px;
+  border-radius: 8px;
+  border: 1px solid rgba(73, 105, 137, 0.14);
+  background: #ffffff;
+  color: #29445d;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.choice-card:hover,
+.choice-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(15, 103, 165, 0.22);
+  box-shadow: 0 10px 20px rgba(14, 61, 96, 0.06);
+}
+
+.choice-card--active,
+.choice-chip--active {
+  background: rgba(15, 103, 165, 0.08);
+  border-color: rgba(15, 103, 165, 0.22);
+  color: #0f5d95;
+}
+
+.choice-card {
+  padding: 16px;
+  text-align: left;
+  display: grid;
+  gap: 8px;
+}
+
+.choice-card strong {
+  font-size: 18px;
+}
+
+.choice-card span {
+  font-size: 13px;
+  color: #688094;
+}
+
+.choice-chip {
+  padding: 0 14px;
+}
+
+.chip-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .editor-footer {
@@ -831,7 +916,7 @@
 
 .list-toolbar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   align-items: end;
   margin-bottom: 20px;
@@ -963,7 +1048,9 @@
   .home-flow-grid,
   .home-recent-grid,
   .home-entry__stats,
-  .editor-progress {
+  .editor-progress,
+  .choice-grid,
+  .chip-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1003,7 +1090,4 @@
     padding-bottom: 12px;
   }
 
-  .main-nav__link--quiet {
-    margin-left: 0;
-  }
 }
