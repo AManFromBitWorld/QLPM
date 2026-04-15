@@ -63,6 +63,10 @@ const baseMeeting = {
 }
 
 let sawRealtime = false
+let channelReadyResolve
+const channelReady = new Promise((resolve) => {
+  channelReadyResolve = resolve
+})
 
 const channel = clientA
   .channel(`qlmp-collab-test-${id}`)
@@ -74,9 +78,14 @@ const channel = clientA
   })
   .subscribe((status) => {
     console.log('Realtime status:', status)
+    if (status === 'SUBSCRIBED') {
+      channelReadyResolve?.()
+    }
   })
 
 async function run() {
+  await channelReady
+
   const initialSelect = await clientA.from(TABLE).select('id').limit(1)
   console.log('Initial select status:', initialSelect.status, initialSelect.error?.message || 'ok')
 
