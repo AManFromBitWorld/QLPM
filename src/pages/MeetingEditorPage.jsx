@@ -733,7 +733,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                     <div className="helper-text">{formatMeetingProvinces(meeting)}</div>
                   </div>
                   <div className="field-grid field-grid--dense">
-                    <div className="field field--full">
+                    <div className="field">
                       <label htmlFor="meeting-title">会议主题</label>
                       <input
                         id="meeting-title"
@@ -764,7 +764,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                       />
                     </div>
 
-                    <div className="field field--full">
+                    <div className="field">
                       <label htmlFor="meeting-project">所属子项目</label>
                       <select
                         id="meeting-project"

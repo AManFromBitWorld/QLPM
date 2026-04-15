@@ -983,26 +983,32 @@
 .selection-panel__stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(108px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .selection-stat {
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid rgba(73, 105, 137, 0.12);
   background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .selection-stat span {
-  display: block;
   font-size: 12px;
   color: #6c8195;
-  margin-bottom: 6px;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .selection-stat strong {
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 1;
   color: #123555;
+  white-space: nowrap;
 }
 
 .selection-block {
