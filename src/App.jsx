@@ -51,7 +51,6 @@ function AppShell({
           <span className="topbar__eyebrow">精准抗感染专项系列会议</span>
           <div>
             <h1>会议信息录入</h1>
-            <p>面向外部填写的主流程入口，先录基础信息，再录人员，最后预览确认。</p>
           </div>
         </div>
         <div className="topbar__utility">
