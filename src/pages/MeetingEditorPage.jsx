@@ -601,7 +601,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         <div className="editor-toolbar">
           <div>
             <h2 style={{ fontSize: 24, marginBottom: 6 }}>{STEP_ITEMS[activeStep].label}</h2>
-            <p>{STEP_ITEMS[activeStep].description}</p>
+            {STEP_ITEMS[activeStep].description ? <p>{STEP_ITEMS[activeStep].description}</p> : null}
           </div>
           <div className="button-row">
             <button
@@ -631,12 +631,9 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
             <div className="basic-workspace">
               <section className="selection-panel selection-panel--sidebar">
                 <div className="selection-panel__intro">
-                  <div>
-                    <h3>地域选择</h3>
-                    <p>先锁定大区与省份，再进入右侧基础表单。</p>
-                  </div>
+                  <h3>地域范围</h3>
                   <div className="selection-panel__stats">
-                  <div className="selection-stat">
+                    <div className="selection-stat">
                       <span>已选大区</span>
                       <strong>{meeting.regions.length > 0 ? meeting.regions.length : '未选择'}</strong>
                     </div>
@@ -649,11 +646,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
                 <div className="selection-block">
                   <div className="selection-block__header">
-                    <div>
-                      <span className="selection-block__step">步骤 1</span>
-                      <h4>选择大区</h4>
-                    </div>
-                    <p>先确定本场会议所属的管理范围。</p>
+                    <h4>大区</h4>
                   </div>
                   <div className="choice-grid choice-grid--compact">
                     {REGIONS.map((region) => (
@@ -673,11 +666,8 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                 {meeting.regions.length > 0 ? (
                   <div className="selection-block selection-block--secondary">
                     <div className="selection-block__header selection-block__header--inline">
-                      <div>
-                        <span className="selection-block__step">步骤 2</span>
-                        <h4>勾选涉及省份</h4>
-                      </div>
-                      <p>当前大区：{formatMeetingRegions(meeting)}，支持多选。</p>
+                      <h4>省份</h4>
+                      <div className="helper-text">{formatMeetingRegions(meeting)}</div>
                     </div>
                     <div className="chip-grid chip-grid--compact">
                       {provinceOptions.map((province) => (
@@ -728,26 +718,19 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                         </div>
                       </div>
                     ) : (
-                      <div className="selection-inline-hint">
-                        请选择一个或多个省份后，再继续填写本场会议基础信息。
-                      </div>
+                      <div className="selection-inline-hint">请选择省份</div>
                     )}
                   </div>
                 ) : (
-                  <div className="selection-inline-hint">
-                    请选择东区、西区、北区或南区后，继续勾选本场会议涉及的省份。
-                  </div>
+                  <div className="selection-inline-hint">请先选择大区</div>
                 )}
               </section>
 
               {meeting.provinces.length > 0 ? (
                 <section className="base-form-panel">
                   <div className="selection-block__header selection-block__header--inline">
-                    <div>
-                      <span className="selection-block__step">步骤 3</span>
-                      <h4>基础表单</h4>
-                    </div>
-                    <p>地区范围已锁定，继续补齐会议档案。</p>
+                    <h4>会议信息</h4>
+                    <div className="helper-text">{formatMeetingProvinces(meeting)}</div>
                   </div>
                   <div className="field-grid field-grid--dense">
                     <div className="field field--full">
@@ -809,8 +792,8 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                 </section>
               ) : (
                 <div className="empty-state empty-state--compact basic-workspace__placeholder">
-                  <strong>右侧表单待解锁</strong>
-                  <div>先在左侧完成大区和省份多选，基础信息表单会立即显示。</div>
+                  <strong>会议信息</strong>
+                  <div>选择省份后显示</div>
                 </div>
               )}
             </div>

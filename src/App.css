@@ -980,12 +980,6 @@
   color: #143553;
 }
 
-.selection-panel__intro p,
-.selection-block__header p {
-  margin: 6px 0 0;
-  color: #61758a;
-}
-
 .selection-panel__stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(108px, 1fr));
@@ -1023,7 +1017,7 @@
 
 .selection-block__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 14px;
 }
@@ -1032,25 +1026,13 @@
   align-items: center;
 }
 
-.selection-block__step {
-  display: inline-flex;
-  align-items: center;
-  min-height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: rgba(15, 103, 165, 0.08);
-  color: #0f5d95;
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
 .selection-inline-hint {
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 8px;
-  background: rgba(15, 103, 165, 0.05);
-  border: 1px dashed rgba(15, 103, 165, 0.14);
-  color: #587086;
+  background: rgba(15, 103, 165, 0.04);
+  border: 1px dashed rgba(15, 103, 165, 0.1);
+  color: #698095;
+  font-size: 13px;
 }
 
 .selected-tags {

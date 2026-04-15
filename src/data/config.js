@@ -112,7 +112,7 @@ export const PERSON_FIELDS = [
 ]
 
 export const STEP_ITEMS = [
-  { key: 'base', label: '基础信息', description: '填写会议主题、时间、大区、省份和所属项目。' },
+  { key: 'base', label: '基础信息', description: '' },
   { key: 'guests', label: '人员录入', description: '按角色录入医院、姓名、科室、职称。' },
   { key: 'preview', label: '预览确认', description: '提交前统一核对，便于导出归档。' },
 ]
