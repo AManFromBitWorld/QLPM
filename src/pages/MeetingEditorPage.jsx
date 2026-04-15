@@ -15,8 +15,10 @@ import {
   createMeetingDraft,
   formatMeetingRegions,
   formatMeetingProvinces,
+  getRoleClaimLabel,
   getRoleParticipantCount,
   getRoleStatus,
+  isRoleClaimActive,
   normalizeMeeting,
 } from '../utils/meeting.js'
 import { getCollaboratorName, saveCollaboratorName } from '../utils/collaboration.js'
@@ -62,6 +64,59 @@ function touchRoleMeta(currentMeeting, roleKey, collaboratorName) {
   }
 }
 
+function touchRoleClaim(currentMeeting, roleKey, collaboratorName, sessionId) {
+  return {
+    ...currentMeeting.roleClaims,
+    [roleKey]: {
+      editorName: collaboratorName || '协作成员',
+      sessionId,
+      heartbeatAt: new Date().toISOString(),
+    },
+  }
+}
+
+function clearRoleClaim(currentMeeting, roleKey, sessionId) {
+  const currentClaim = currentMeeting.roleClaims?.[roleKey]
+
+  if (!currentClaim?.sessionId || currentClaim.sessionId !== sessionId) {
+    return currentMeeting.roleClaims
+  }
+
+  return {
+    ...currentMeeting.roleClaims,
+    [roleKey]: {
+      editorName: '',
+      sessionId: '',
+      heartbeatAt: '',
+    },
+  }
+}
+
+function createSessionId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+
+  return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function isRoleClaimLocked(claim, currentSessionId) {
+  return isRoleClaimActive(claim) && claim?.sessionId && claim.sessionId !== currentSessionId
+}
+
+function buildConflictMessage(conflictingRoles, baseConflict) {
+  if (conflictingRoles.length === 0 && !baseConflict) {
+    return '检测到协作冲突，已加载最新内容。'
+  }
+
+  if (baseConflict && conflictingRoles.length === 0) {
+    return '基础信息已被他人更新，当前页面已切换到最新版本。'
+  }
+
+  const roleLabel = conflictingRoles.join('、')
+  return `检测到 ${roleLabel} 已被他人更新，当前页面已切换到最新版本，避免覆盖。`
+}
+
 function MeetingEditorPage({ meetings, onSaveMeeting }) {
   const { meetingId } = useParams()
   const navigate = useNavigate()
@@ -79,11 +134,24 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   const [importMessage, setImportMessage] = useState('')
   const [collaboratorName, setCollaboratorName] = useState(() => getCollaboratorName())
   const [syncMessage, setSyncMessage] = useState('')
+  const [activeRoleKey, setActiveRoleKey] = useState('')
+  const [sessionId] = useState(createSessionId)
   const isFirstAutosave = useRef(true)
   const autosaveTimer = useRef(null)
   const meetingRef = useRef(meeting)
+  const syncedMeetingRef = useRef(meeting)
+  const dirtyRolesRef = useRef(new Set())
+  const dirtyBaseRef = useRef(false)
 
   const completion = useMemo(() => getMeetingCompletion(meeting), [meeting])
+  const activeClaims = useMemo(
+    () =>
+      ROLE_CONFIG.map((role) => ({
+        role,
+        claim: meeting.roleClaims?.[role.key],
+      })).filter(({ claim }) => isRoleClaimActive(claim)),
+    [meeting.roleClaims],
+  )
   const provinceOptions = [
     ...new Set(
       (meeting.regions || []).flatMap((region) => REGION_PROVINCES[region] || []),
@@ -92,8 +160,14 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
   useEffect(() => {
     if (editingMeeting) {
+      const nextMeeting = normalizeMeeting(editingMeeting)
+      const hasLocalDraftChanges = dirtyBaseRef.current || dirtyRolesRef.current.size > 0
+
       const syncTimer = window.setTimeout(() => {
-        setMeeting(normalizeMeeting(editingMeeting))
+        if (!hasLocalDraftChanges) {
+          setMeeting(nextMeeting)
+          syncedMeetingRef.current = nextMeeting
+        }
       }, 0)
 
       return () => window.clearTimeout(syncTimer)
@@ -110,6 +184,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   }, [collaboratorName])
 
   const handleBaseFieldChange = (field, value) => {
+    dirtyBaseRef.current = true
     setMeeting((currentMeeting) => ({
       ...currentMeeting,
       [field]: value,
@@ -117,6 +192,11 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   }
 
   const handleParticipantChange = (roleKey, personId, field, value) => {
+    if (!handleActivateRole(roleKey)) {
+      return
+    }
+
+    dirtyRolesRef.current.add(roleKey)
     setMeeting((currentMeeting) => ({
       ...currentMeeting,
       attendees: {
@@ -126,10 +206,21 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         ),
       },
       roleMeta: touchRoleMeta(currentMeeting, roleKey, collaboratorName),
+      roleClaims: touchRoleClaim(
+        currentMeeting,
+        roleKey,
+        collaboratorName,
+        sessionId,
+      ),
     }))
   }
 
   const handleAddParticipant = (roleKey) => {
+    if (!handleActivateRole(roleKey)) {
+      return
+    }
+
+    dirtyRolesRef.current.add(roleKey)
     setMeeting((currentMeeting) => ({
       ...currentMeeting,
       attendees: {
@@ -137,10 +228,21 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         [roleKey]: [...currentMeeting.attendees[roleKey], createEmptyParticipant()],
       },
       roleMeta: touchRoleMeta(currentMeeting, roleKey, collaboratorName),
+      roleClaims: touchRoleClaim(
+        currentMeeting,
+        roleKey,
+        collaboratorName,
+        sessionId,
+      ),
     }))
   }
 
   const handleRemoveParticipant = (roleKey, personId) => {
+    if (!handleActivateRole(roleKey)) {
+      return
+    }
+
+    dirtyRolesRef.current.add(roleKey)
     setMeeting((currentMeeting) => ({
       ...currentMeeting,
       attendees: {
@@ -148,16 +250,81 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         [roleKey]: currentMeeting.attendees[roleKey].filter((person) => person.id !== personId),
       },
       roleMeta: touchRoleMeta(currentMeeting, roleKey, collaboratorName),
+      roleClaims: touchRoleClaim(
+        currentMeeting,
+        roleKey,
+        collaboratorName,
+        sessionId,
+      ),
     }))
+  }
+
+  const handleActivateRole = (roleKey) => {
+    const currentClaim = meetingRef.current.roleClaims?.[roleKey]
+
+    if (isRoleClaimLocked(currentClaim, sessionId)) {
+      setSyncMessage(
+        `${getRoleClaimLabel(currentClaim, sessionId)}，当前角色暂不可接管，避免互相覆盖。`,
+      )
+      return false
+    }
+
+    const previousRoleKey = activeRoleKey
+    setActiveRoleKey(roleKey)
+    setMeeting((currentMeeting) => {
+      const meetingAfterRelease =
+        previousRoleKey && previousRoleKey !== roleKey
+          ? {
+              ...currentMeeting,
+              roleClaims: clearRoleClaim(currentMeeting, previousRoleKey, sessionId),
+            }
+          : currentMeeting
+
+      return {
+        ...meetingAfterRelease,
+        roleClaims: touchRoleClaim(meetingAfterRelease, roleKey, collaboratorName, sessionId),
+      }
+    })
+    setSyncMessage('')
+    return true
   }
 
   const handleSave = async (status) => {
     try {
-      const savedMeeting = await onSaveMeeting({
-        ...meeting,
-        status,
-      })
+      const result = await onSaveMeeting(
+        {
+          ...meeting,
+          status,
+        },
+        {
+          baselineMeeting: syncedMeetingRef.current,
+          dirtyBase: dirtyBaseRef.current,
+          dirtyRoles: [...dirtyRolesRef.current],
+          claimedRoleKey: activeRoleKey,
+        },
+      )
+
+      if (result.conflict) {
+        setMeeting(result.meeting)
+        syncedMeetingRef.current = result.meeting
+        dirtyRolesRef.current.clear()
+        dirtyBaseRef.current = false
+        setMessage(
+          buildConflictMessage(
+            result.conflictingRoles.map(
+              (roleKey) => ROLE_CONFIG.find((role) => role.key === roleKey)?.label || roleKey,
+            ),
+            result.baseConflict,
+          ),
+        )
+        return
+      }
+
+      const savedMeeting = result.meeting
       setMeeting(savedMeeting)
+      syncedMeetingRef.current = savedMeeting
+      dirtyRolesRef.current.clear()
+      dirtyBaseRef.current = false
       setMessage(status === '已确认' ? '会议已确认并保存。' : '会议草稿已保存。')
       if (!meetingId) {
         navigate(`/meetings/${savedMeeting.id}/edit`, { replace: true })
@@ -177,6 +344,11 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
 
     const participants = [...meeting.attendees[importRole]]
     let importedCount = 0
+    if (!handleActivateRole(importRole)) {
+      return
+    }
+
+    dirtyRolesRef.current.add(importRole)
 
     entries.forEach((entry) => {
       let targetIndex = participants.findIndex(
@@ -205,6 +377,12 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
         [importRole]: participants,
       },
       roleMeta: touchRoleMeta(currentMeeting, importRole, collaboratorName),
+      roleClaims: touchRoleClaim(
+        currentMeeting,
+        importRole,
+        collaboratorName,
+        sessionId,
+      ),
     }))
     setImportMessage(
       `已为“${ROLE_CONFIG.find((role) => role.key === importRole)?.label}”导入 ${importedCount} 条信息。`,
@@ -213,6 +391,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   }
 
   const handleRegionSelect = (region) => {
+    dirtyBaseRef.current = true
     setMeeting((currentMeeting) => {
       const exists = currentMeeting.regions.includes(region)
       const nextRegions = exists
@@ -234,6 +413,7 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
   }
 
   const handleProvinceToggle = (province) => {
+    dirtyBaseRef.current = true
     setMeeting((currentMeeting) => {
       const exists = currentMeeting.provinces.includes(province)
 
@@ -277,12 +457,42 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
       return
     }
 
+    if (!dirtyBaseRef.current && dirtyRolesRef.current.size === 0) {
+      return
+    }
+
     window.clearTimeout(autosaveTimer.current)
     autosaveTimer.current = window.setTimeout(async () => {
       try {
         setSyncMessage('自动保存中...')
-        const savedMeeting = await onSaveMeeting(meetingRef.current)
+        const result = await onSaveMeeting(meetingRef.current, {
+          baselineMeeting: syncedMeetingRef.current,
+          dirtyBase: dirtyBaseRef.current,
+          dirtyRoles: [...dirtyRolesRef.current],
+          claimedRoleKey: activeRoleKey,
+        })
+
+        if (result.conflict) {
+          setMeeting(result.meeting)
+          syncedMeetingRef.current = result.meeting
+          dirtyRolesRef.current.clear()
+          dirtyBaseRef.current = false
+          setSyncMessage(
+            buildConflictMessage(
+              result.conflictingRoles.map(
+                (roleKey) => ROLE_CONFIG.find((role) => role.key === roleKey)?.label || roleKey,
+              ),
+              result.baseConflict,
+            ),
+          )
+          return
+        }
+
+        const savedMeeting = result.meeting
         setMeeting(savedMeeting)
+        syncedMeetingRef.current = savedMeeting
+        dirtyRolesRef.current.clear()
+        dirtyBaseRef.current = false
         setSyncMessage('已自动保存并同步')
         if (!meetingId) {
           navigate(`/meetings/${savedMeeting.id}/edit`, { replace: true })
@@ -295,7 +505,61 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
     return () => {
       window.clearTimeout(autosaveTimer.current)
     }
-  }, [autosavePayload, meetingId, navigate, onSaveMeeting])
+  }, [activeRoleKey, autosavePayload, meetingId, navigate, onSaveMeeting])
+
+  useEffect(() => {
+    if (!meetingId || !activeRoleKey || !collaboratorName) {
+      return
+    }
+
+    const heartbeatTimer = window.setInterval(async () => {
+      const latestMeeting = meetingRef.current
+      const refreshedMeeting = {
+        ...latestMeeting,
+        roleClaims: touchRoleClaim(
+          latestMeeting,
+          activeRoleKey,
+          collaboratorName,
+          sessionId,
+        ),
+      }
+      meetingRef.current = refreshedMeeting
+      setMeeting(refreshedMeeting)
+      await onSaveMeeting(refreshedMeeting, {
+        baselineMeeting: syncedMeetingRef.current,
+        claimedRoleKey: activeRoleKey,
+      }).then((result) => {
+        if (!result.conflict) {
+          syncedMeetingRef.current = result.meeting
+          setMeeting(result.meeting)
+        }
+      }).catch(() => {})
+    }, 10000)
+
+    return () => window.clearInterval(heartbeatTimer)
+  }, [activeRoleKey, collaboratorName, meetingId, onSaveMeeting, sessionId])
+
+  useEffect(() => {
+    const releasedRoleKey = activeRoleKey
+    const currentSessionId = sessionId
+
+    return () => {
+      if (!meetingId || !releasedRoleKey) {
+        return
+      }
+
+      void onSaveMeeting(
+        {
+          ...meetingRef.current,
+          roleClaims: clearRoleClaim(meetingRef.current, releasedRoleKey, currentSessionId),
+        },
+        {
+          baselineMeeting: syncedMeetingRef.current,
+          releaseRoleKeys: [releasedRoleKey],
+        },
+      ).catch(() => {})
+    }
+  }, [activeRoleKey, meetingId, onSaveMeeting, sessionId])
 
   return (
     <div className="page-content">
@@ -578,6 +842,25 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                   </div>
                 </section>
 
+                <section className="collaboration-panel collaboration-panel--presence">
+                  <div className="role-jump-nav__head">
+                    <div className="role-jump-nav__label">实时填写状态</div>
+                    <p>当前会议里，谁正在填写哪个角色。</p>
+                  </div>
+                  {activeClaims.length > 0 ? (
+                    <div className="presence-list">
+                      {activeClaims.map(({ role, claim }) => (
+                        <div className="presence-item" key={role.key}>
+                          <strong>{role.label}</strong>
+                          <span>{getRoleClaimLabel(claim, sessionId)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="helper-text">当前暂无角色处于填写中。</div>
+                  )}
+                </section>
+
                 <div className="people-sidebar__summary">
                   <div className="people-sidebar__metric">
                     <span>已填席位</span>
@@ -601,27 +884,37 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                       <button
                         type="button"
                         key={role.key}
-                      className="role-jump-nav__button"
-                      onClick={() => scrollToSection(`role-${role.key}`)}
-                    >
-                      <div>
-                        <strong>{role.label}</strong>
-                        <div className="role-jump-nav__meta">
-                          {meeting.roleMeta?.[role.key]?.updatedBy
-                            ? `最近更新：${meeting.roleMeta[role.key].updatedBy}`
-                            : '尚未填写'}
+                        className={`role-jump-nav__button ${
+                          activeRoleKey === role.key ? 'role-jump-nav__button--active' : ''
+                        } ${
+                          isRoleClaimLocked(meeting.roleClaims?.[role.key], sessionId)
+                            ? 'role-jump-nav__button--locked'
+                            : ''
+                        }`}
+                        onClick={() => {
+                          scrollToSection(`role-${role.key}`)
+                          handleActivateRole(role.key)
+                        }}
+                      >
+                        <div>
+                          <strong>{role.label}</strong>
+                          <div className="role-jump-nav__meta">
+                            {getRoleClaimLabel(meeting.roleClaims?.[role.key], sessionId) ||
+                              (meeting.roleMeta?.[role.key]?.updatedBy
+                                ? `最近更新：${meeting.roleMeta[role.key].updatedBy}`
+                                : '尚未填写')}
+                          </div>
                         </div>
-                      </div>
-                      <div className="role-jump-nav__status">
-                        <span>{getRoleStatus(meeting.attendees[role.key])}</span>
-                        <em>
-                          {getRoleParticipantCount(meeting.attendees[role.key])}/
-                          {meeting.attendees[role.key].length}
-                        </em>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                        <div className="role-jump-nav__status">
+                          <span>{getRoleStatus(meeting.attendees[role.key])}</span>
+                          <em>
+                            {getRoleParticipantCount(meeting.attendees[role.key])}/
+                            {meeting.attendees[role.key].length}
+                          </em>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </section>
 
                 <section className="smart-import-panel smart-import-panel--compact smart-import-panel--flat">
@@ -702,6 +995,9 @@ function MeetingEditorPage({ meetings, onSaveMeeting }) {
                       sectionId={`role-${role.key}`}
                       participants={meeting.attendees[role.key]}
                       collaborationMeta={meeting.roleMeta?.[role.key]}
+                      roleClaim={meeting.roleClaims?.[role.key]}
+                      currentSessionId={sessionId}
+                      onActivateRole={handleActivateRole}
                       onAddParticipant={handleAddParticipant}
                       onChangeParticipant={handleParticipantChange}
                       onRemoveParticipant={handleRemoveParticipant}

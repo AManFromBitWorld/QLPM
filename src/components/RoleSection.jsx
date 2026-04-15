@@ -1,11 +1,19 @@
 import { Plus, X } from 'lucide-react'
 import { PERSON_FIELDS } from '../data/config.js'
-import { getRoleParticipantCount, getRoleStatus } from '../utils/meeting.js'
+import {
+  getRoleClaimLabel,
+  getRoleParticipantCount,
+  getRoleStatus,
+  isRoleClaimActive,
+} from '../utils/meeting.js'
 
 function RoleSection({
   role,
   participants,
   collaborationMeta,
+  roleClaim,
+  currentSessionId,
+  onActivateRole,
   onAddParticipant,
   onChangeParticipant,
   onRemoveParticipant,
@@ -13,6 +21,11 @@ function RoleSection({
 }) {
   const filledCount = getRoleParticipantCount(participants)
   const roleStatus = getRoleStatus(participants)
+  const claimLabel = getRoleClaimLabel(roleClaim, currentSessionId)
+  const lockedByOther =
+    isRoleClaimActive(roleClaim) &&
+    roleClaim?.sessionId &&
+    roleClaim.sessionId !== currentSessionId
 
   return (
     <section className="role-section" id={sectionId}>
@@ -25,17 +38,22 @@ function RoleSection({
           <div className="role-section__meta-row">
             <span className="helper-text">{role.description}</span>
             <span className="role-section__status">{roleStatus}</span>
+            {claimLabel ? <span className="role-section__claim">{claimLabel}</span> : null}
             {collaborationMeta?.updatedBy ? (
               <span className="helper-text">
                 最近更新：{collaborationMeta.updatedBy}
               </span>
             ) : null}
           </div>
+          {lockedByOther ? (
+            <div className="role-section__lock-note">{claimLabel}，当前已锁定，避免互相覆盖。</div>
+          ) : null}
         </div>
         <button
           type="button"
           className="role-section__action"
           onClick={() => onAddParticipant(role.key)}
+          disabled={lockedByOther}
         >
           <Plus size={14} />
           新增席位
@@ -62,9 +80,15 @@ function RoleSection({
                   type="button"
                   className="person-card__remove"
                   onClick={() => onRemoveParticipant(role.key, person.id)}
-                  disabled={!removable}
+                  disabled={!removable || lockedByOther}
                   aria-label={`删除${role.label}${index + 1}`}
-                  title={removable ? '删除席位' : '标准席位不可删除'}
+                  title={
+                    lockedByOther
+                      ? claimLabel
+                      : removable
+                        ? '删除席位'
+                        : '标准席位不可删除'
+                  }
                 >
                   <X size={14} />
                 </button>
@@ -81,6 +105,8 @@ function RoleSection({
                       type="text"
                       placeholder={field.placeholder}
                       value={person[field.key]}
+                      disabled={lockedByOther}
+                      onFocus={() => onActivateRole(role.key)}
                       onChange={(event) =>
                         onChangeParticipant(role.key, person.id, field.key, event.target.value)
                       }

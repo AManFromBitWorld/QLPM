@@ -3,6 +3,7 @@ import { duplicateMeeting, normalizeMeeting } from './meeting.js'
 
 const STORAGE_KEY = 'qlmp-meeting-records'
 const TABLE_NAME = 'qlmp_meetings'
+const BASE_FIELDS = ['regions', 'provinces', 'project', 'title', 'date', 'time', 'note', 'status']
 
 function sortMeetings(meetings) {
   return meetings.sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt))
@@ -54,6 +55,87 @@ function fromDatabaseRows(rows) {
   return sortMeetings(rows.map((row) => normalizeMeeting(row.payload)))
 }
 
+function getBaseSnapshot(meeting) {
+  return BASE_FIELDS.reduce((snapshot, field) => {
+    snapshot[field] = meeting[field]
+    return snapshot
+  }, {})
+}
+
+function isSameValue(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function clearRoleClaim() {
+  return {
+    editorName: '',
+    sessionId: '',
+    heartbeatAt: '',
+  }
+}
+
+function buildMergedMeeting(localMeeting, remoteMeeting, options = {}) {
+  const {
+    dirtyRoles = [],
+    dirtyBase = false,
+    claimedRoleKey = '',
+    releaseRoleKeys = [],
+  } = options
+
+  const mergedMeeting = normalizeMeeting(remoteMeeting || localMeeting)
+
+  if (dirtyBase || !remoteMeeting) {
+    BASE_FIELDS.forEach((field) => {
+      mergedMeeting[field] = localMeeting[field]
+    })
+  }
+
+  dirtyRoles.forEach((roleKey) => {
+    mergedMeeting.attendees[roleKey] = localMeeting.attendees[roleKey]
+    mergedMeeting.roleMeta[roleKey] = localMeeting.roleMeta[roleKey]
+  })
+
+  if (claimedRoleKey) {
+    mergedMeeting.roleClaims[claimedRoleKey] = localMeeting.roleClaims[claimedRoleKey]
+  }
+
+  releaseRoleKeys.forEach((roleKey) => {
+    mergedMeeting.roleClaims[roleKey] = clearRoleClaim()
+  })
+
+  mergedMeeting.updatedAt = new Date().toISOString()
+  return mergedMeeting
+}
+
+function detectConflicts(remoteMeeting, baselineMeeting, options = {}) {
+  const {
+    dirtyRoles = [],
+    dirtyBase = false,
+  } = options
+
+  const conflictingRoles = dirtyRoles.filter((roleKey) => {
+    const remoteParticipants = remoteMeeting.attendees?.[roleKey] || []
+    const baselineParticipants = baselineMeeting.attendees?.[roleKey] || []
+    const remoteMeta = remoteMeeting.roleMeta?.[roleKey] || {}
+    const baselineMeta = baselineMeeting.roleMeta?.[roleKey] || {}
+
+    return (
+      !isSameValue(remoteParticipants, baselineParticipants) ||
+      remoteMeta.updatedAt !== baselineMeta.updatedAt
+    )
+  })
+
+  const baseConflict =
+    dirtyBase &&
+    !isSameValue(getBaseSnapshot(remoteMeeting), getBaseSnapshot(baselineMeeting))
+
+  return {
+    conflictingRoles,
+    baseConflict,
+    hasConflict: conflictingRoles.length > 0 || baseConflict,
+  }
+}
+
 export function getSyncMode() {
   return isCloudSyncEnabled() ? 'cloud' : 'local'
 }
@@ -77,6 +159,29 @@ export async function listMeetingRecords() {
   const meetings = fromDatabaseRows(data || [])
   persistMeetings(meetings)
   return meetings
+}
+
+export async function fetchMeetingRecord(meetingId) {
+  if (!meetingId) {
+    return null
+  }
+
+  if (!isCloudSyncEnabled()) {
+    return parseLocalMeetings().find((meeting) => meeting.id === meetingId) || null
+  }
+
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase
+    .from(TABLE_NAME)
+    .select('payload')
+    .eq('id', meetingId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return data ? normalizeMeeting(data.payload) : null
 }
 
 export function subscribeToMeetingRecords(onMeetings) {
@@ -107,7 +212,7 @@ export function subscribeToMeetingRecords(onMeetings) {
   }
 }
 
-export async function saveMeetingRecord(currentMeetings, meetingDraft) {
+export async function saveMeetingRecord(currentMeetings, meetingDraft, options = {}) {
   const normalizedMeeting = normalizeMeeting({
     ...meetingDraft,
     updatedAt: new Date().toISOString(),
@@ -135,7 +240,27 @@ export async function saveMeetingRecord(currentMeetings, meetingDraft) {
   }
 
   const supabase = getSupabaseClient()
-  const { error } = await supabase.from(TABLE_NAME).upsert(toDatabaseRow(normalizedMeeting))
+  const remoteMeeting = await fetchMeetingRecord(normalizedMeeting.id)
+  const baselineMeeting = options.baselineMeeting
+    ? normalizeMeeting(options.baselineMeeting)
+    : remoteMeeting
+
+  if (remoteMeeting && baselineMeeting) {
+    const conflictState = detectConflicts(remoteMeeting, baselineMeeting, options)
+
+    if (conflictState.hasConflict) {
+      return {
+        meetings: currentMeetings,
+        meeting: remoteMeeting,
+        conflict: true,
+        conflictingRoles: conflictState.conflictingRoles,
+        baseConflict: conflictState.baseConflict,
+      }
+    }
+  }
+
+  const mergedMeeting = buildMergedMeeting(normalizedMeeting, remoteMeeting, options)
+  const { error } = await supabase.from(TABLE_NAME).upsert(toDatabaseRow(mergedMeeting))
 
   if (error) {
     throw error
@@ -144,7 +269,7 @@ export async function saveMeetingRecord(currentMeetings, meetingDraft) {
   const meetings = await listMeetingRecords()
   return {
     meetings,
-    meeting: normalizedMeeting,
+    meeting: mergedMeeting,
   }
 }
 

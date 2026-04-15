@@ -131,16 +131,27 @@ function App() {
       }
     })
 
+    const pollingTimer =
+      syncMode === 'cloud'
+        ? window.setInterval(() => {
+            void load()
+          }, 8000)
+        : null
+
     return () => {
       active = false
+      if (pollingTimer) {
+        window.clearInterval(pollingTimer)
+      }
       unsubscribe?.()
     }
-  }, [])
+  }, [syncMode])
 
-  const handleSaveMeeting = async (meetingDraft) => {
-    const { meetings: nextMeetings, meeting } = await saveMeetingRecord(meetings, meetingDraft)
+  const handleSaveMeeting = async (meetingDraft, options = {}) => {
+    const { meetings: nextMeetings, meeting, conflict, conflictingRoles, baseConflict } =
+      await saveMeetingRecord(meetings, meetingDraft, options)
     setMeetings(nextMeetings)
-    return meeting
+    return { meeting, conflict, conflictingRoles, baseConflict }
   }
 
   const handleDeleteMeeting = async (meetingId) => {

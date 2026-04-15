@@ -32,6 +32,17 @@ export function createRoleMeta() {
   }, {})
 }
 
+export function createRoleClaims() {
+  return ROLE_CONFIG.reduce((collection, role) => {
+    collection[role.key] = {
+      editorName: '',
+      sessionId: '',
+      heartbeatAt: '',
+    }
+    return collection
+  }, {})
+}
+
 export function createMeetingDraft() {
   const attendees = ROLE_CONFIG.reduce((collection, role) => {
     collection[role.key] = createRoleEntries(role.minimum)
@@ -50,6 +61,7 @@ export function createMeetingDraft() {
     status: '草稿',
     attendees,
     roleMeta: createRoleMeta(),
+    roleClaims: createRoleClaims(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -103,6 +115,15 @@ export function normalizeMeeting(meeting) {
     return collection
   }, {})
 
+  const roleClaims = ROLE_CONFIG.reduce((collection, role) => {
+    collection[role.key] = {
+      editorName: source.roleClaims?.[role.key]?.editorName || '',
+      sessionId: source.roleClaims?.[role.key]?.sessionId || '',
+      heartbeatAt: source.roleClaims?.[role.key]?.heartbeatAt || '',
+    }
+    return collection
+  }, {})
+
   return {
     id: source.id || generateId(),
     regions,
@@ -115,6 +136,7 @@ export function normalizeMeeting(meeting) {
     status: source.status || '草稿',
     attendees,
     roleMeta,
+    roleClaims,
     createdAt: source.createdAt || new Date().toISOString(),
     updatedAt: source.updatedAt || new Date().toISOString(),
   }
@@ -192,4 +214,24 @@ export function getRoleStatus(participants) {
   }
 
   return '已完成'
+}
+
+export function isRoleClaimActive(claim) {
+  if (!claim?.heartbeatAt) {
+    return false
+  }
+
+  return Date.now() - new Date(claim.heartbeatAt).getTime() < 30000
+}
+
+export function getRoleClaimLabel(claim, currentSessionId) {
+  if (!isRoleClaimActive(claim)) {
+    return ''
+  }
+
+  if (claim.sessionId && claim.sessionId === currentSessionId) {
+    return '你正在填写'
+  }
+
+  return claim.editorName ? `${claim.editorName} 正在填写` : '他人正在填写'
 }
